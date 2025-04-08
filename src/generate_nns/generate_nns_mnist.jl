@@ -4,7 +4,7 @@
 
 MNIST_DATA_PATH = string(@__DIR__, "/../../datasets/mnist_train.csv")
 MNIST_MODEL_PATHS = readdir(string(@__DIR__, "/../../networks/mnist"), join=true)
-MNIST_DEGREES = (1:9) ∪ (10:10:100)
+MNIST_DEGREES = (1:9) ∪ (10:10:200)
 MNIST_LOG_FILE_PREFIX = string(@__DIR__, "/../../results/mnist")
 
 
