@@ -34,6 +34,8 @@ Once the environment is set up, we can run the experiments via (set `test_run=tr
 ```julia
 julia> using VeryDiffPolyExperiments
 julia> generate_mnist_nets_verified_bounds(test_run=true)
+julia> warmup_eps_equivalence_mnist()  # to trigger precompilation
+julia> verify_eps_equivalence_mnist("2025-04-08", test_run=true)
 ```
 
 ## Ensure Single-Threaded Execution
