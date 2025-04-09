@@ -8,6 +8,8 @@ Experimental Evaluation for Equivalence Verification of Polynomial Neural Networ
 - `networks`: Neural networks used for verification and polynomial approximation in the experiments
 - `results`: Results of the experiments
 - `src`: Code to run the experiments
+    - `generate_nns`: Code to run experiments for synthesis of polynomial neural networks
+    - `verify_nns`: Code to run experiments for verifying equivalence of standard and polynomial neural networks
 
 # Setup
 
