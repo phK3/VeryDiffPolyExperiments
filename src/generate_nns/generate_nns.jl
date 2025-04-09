@@ -207,6 +207,6 @@ function generate_poly_networks(net_paths::AbstractVector, z::Zonotope, degrees:
             push!(nets, nn_poly)
         end
 
-        jldsave(log_file_name; max_errs, maes, mses, accs, times, nets)
+        jldsave(log_file_name; degrees, max_errs, maes, mses, accs, times, nets)
     end   
 end
