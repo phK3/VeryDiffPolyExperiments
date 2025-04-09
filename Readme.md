@@ -34,6 +34,15 @@ julia> using VeryDiffPolyExperiments
 julia> generate_mnist_nets_verified_bounds(test_run=true)
 ```
 
+## Ensure Single-Threaded Execution
+
+Although our Julia implementation should only use a single thread by default, calls to external libraries might use multiple threads.
+To ensure single-threaded execution, use
+```bash
+taskset -c 0 julia
+```
+to start Julia and pin it to processor $0$.
+
 
 
 
