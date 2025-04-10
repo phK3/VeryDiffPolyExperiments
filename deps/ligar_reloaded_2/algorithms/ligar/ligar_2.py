@@ -54,7 +54,7 @@ class ForwardNetwork2:
         b_list -> list of bias vectors
         x_range -> interval ranges of each input variable
         d_list -> approximation degree for each ReLU and each layer
-        mode -> either "approx" or "cheby"
+        mode -> either "approx" or "chebyshev"
     """
     def __init__(self, w_list, b_list, x_range, d_list, mode="approx"):
         
@@ -102,7 +102,7 @@ class ForwardNetwork2:
                 e = deg_1_relu_error(pot_min, pot_max)
                 e = e / degrees
                 e_range = np.column_stack([-e,+e])
-            elif mode == "cheby":
+            elif mode == "chebyshev":
                 e_range = np.zeros([len(degrees),2])
                 for i in range(len(degrees)):
                     e = cheby_relu_error(pot_min[i], pot_max[i], degrees[i])

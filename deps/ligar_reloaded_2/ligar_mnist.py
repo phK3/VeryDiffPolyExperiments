@@ -25,7 +25,7 @@ for i in range(n_layers):
 
 # choose the polynomial error approximation mode
 #mode = "approx"
-mode = "cheby"
+mode = "chebyshev"
 
 out_b = []
 
