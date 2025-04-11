@@ -16,6 +16,7 @@ function __init__()
     
 end
 
+include("utils.jl")
 include("generate_nns/generate_nns.jl")
 include("generate_nns/generate_nns_mnist.jl")
 include("generate_nns/generate_nns_heloc.jl")
