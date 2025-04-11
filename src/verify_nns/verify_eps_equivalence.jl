@@ -4,6 +4,8 @@ function map_logfile2network(logfile)
     netpath = string(@__DIR__, "/../../networks")
     if contains(logfile, "mnist")
         netpath = string(netpath, "/mnist")
+    elseif contains(logfile, "heloc")
+        netpath = string(netpath, "/heloc")
     else
         throw(ArgumentError("Dataset not known for logfile $(logfile)"))
     end
@@ -20,6 +22,11 @@ function map_logfile2network(logfile)
         netpath = string(netpath, "/mnist-net_256x4.onnx")
     elseif contains(logfile, "mnist-net_256x6")
         netpath = string(netpath, "/mnist-net_256x6.onnx")
+    elseif contains(logfile, "heloc_2e5")
+        netpath = string(netpath, "/heloc_2e5.onnx")
+    elseif contains(logfile, "heloc")
+        # has to be last of heloc checks, because of course "heloc_2e5" also contains substring "heloc"
+        netpath = string(netpath, "/heloc.onnx")
     else
         throw(ArgumentError("Network not known for logfile $(logfile)"))
     end
