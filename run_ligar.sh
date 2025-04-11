@@ -1,7 +1,7 @@
 #!/bin/bash
 
-LIGAR_PATH="deps/ligar_reloaded/ligar_main.py"
-EPS=1
+LIGAR_PATH="deps/ligar_reloaded_2/ligar_main.py"
+EPS=0.5
 
 # run LIGAR on MNIST with approximate formula for error
 taskset -c 0 python "$LIGAR_PATH" --model networks/mnist/mnist_256x4_1e4.onnx --output results/mnist/ligar_mnist_256x4_1e4_approx_global.csv --dataset mnist --eps_in $EPS 
