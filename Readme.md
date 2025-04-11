@@ -53,7 +53,7 @@ to start Julia and pin it to processor $0$.
 
 To run the LIGAR experiments, create and activate the `ligar` conda environment and execute the shell script via
 ```bash
-$ conda env create -f deps/ligar/reloaded/ligar_environment.yaml --name ligar 
+$ conda env create -f deps/ligar_reloaded/ligar_environment.yaml --name ligar 
 $ activate ligar
 $ ./run_ligar.sh
 ```
