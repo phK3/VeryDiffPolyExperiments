@@ -48,8 +48,6 @@ def load_model(model_path: str):
         else:
             raise RuntimeError(f"Unknown parameter name: {param.name}")
         
-    print([W.shape for W in W_list])
-
     return W_list, b_list
 
 
