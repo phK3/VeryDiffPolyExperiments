@@ -29,6 +29,7 @@ function verify_eps_equivalence_sample_mnist(logfile_generated_filter::String; s
     println("### Verifying epsilon equivalence MNIST ###")
     test_run && println("[INFO] TESTRUN ...")
     n_sample = test_run ? 1 : n_sample
+    radii = test_run ? [0.05] : radii
     radii = isnothing(radii) ? [0.01, 0.03, 0.05] : radii
     println("[INFO] start_sample = ", start_sample, ", n_sample = ", n_sample)
     println("[INFO] turn off warnings for almost zero leading coeffs ...")
@@ -39,6 +40,9 @@ function verify_eps_equivalence_sample_mnist(logfile_generated_filter::String; s
     logfiles_generated = readdir(string(@__DIR__, "/../../results/mnist"), join=true)
     logfiles_generated = filter(x -> contains(x, logfile_generated_filter), logfiles_generated)
 
+    logfiles_generated = test_run ? [logfiles_generated[1]] : logfiles_generated
+
+    println("[INFO] loading MNIST data ...")
     X_test, y_test = load_mnist_data()
     xs = X_test[start_sample:start_sample+n_sample]
 
