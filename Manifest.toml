@@ -315,9 +315,9 @@ version = "1.15.1"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
-git-tree-sha1 = "70e500f6d5d50091d87859251de7b8cd060c1cce"
+git-tree-sha1 = "e41b6696c84291c4ad15f5f6eaf071b4dfbfda06"
 uuid = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-version = "0.6.50"
+version = "0.6.51"
 
     [deps.DifferentiationInterface.extensions]
     DifferentiationInterfaceChainRulesCoreExt = "ChainRulesCore"
@@ -614,9 +614,9 @@ version = "12.0.1"
 
 [[deps.HTTP]]
 deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "PrecompileTools", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "c67b33b085f6e2faf8bf79a61962e7339a81129c"
+git-tree-sha1 = "f93655dc73d7a0b4a368e3c0bce296ae035ad76e"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.10.15"
+version = "1.10.16"
 
 [[deps.HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll"]
@@ -913,9 +913,9 @@ version = "0.1.0"
 
 [[deps.MathOptInterface]]
 deps = ["BenchmarkTools", "CodecBzip2", "CodecZlib", "DataStructures", "ForwardDiff", "JSON3", "LinearAlgebra", "MutableArithmetics", "NaNMath", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays", "SpecialFunctions", "Test"]
-git-tree-sha1 = "2e20edca2492d30aeabdb099f3a80eb95d1d03d1"
+git-tree-sha1 = "c2514ede436071529470010540bc3a1441e8140c"
 uuid = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-version = "1.38.1"
+version = "1.39.0"
 
 [[deps.MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "NetworkOptions", "Random", "Sockets"]
@@ -1542,7 +1542,7 @@ version = "0.2.3"
 
 [[deps.VeryDiff]]
 deps = ["CSV", "DataStructures", "DoubleFloats", "GLPK", "Gurobi", "JLD2", "JuMP", "LinearAlgebra", "MaskedArrays", "Optim", "Plots", "PolynomialRoots", "Printf", "Random", "SparseArrays", "SymbolicUtils", "ThreadPinning", "TimerOutputs", "VNNLib"]
-git-tree-sha1 = "944b3d5f60267efcb1fe044dd65394c2849714f7"
+git-tree-sha1 = "64587abbb5d39266d46ed8cd3d170d27d28d01f4"
 repo-rev = "poly_dev"
 repo-url = "https://github.com/samysweb/VeryDiff"
 uuid = "46246037-a9ce-44df-b2b1-49d8cf705fcd"
@@ -1620,9 +1620,9 @@ version = "1.8.6+3"
 
 [[deps.Xorg_libXau_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "e9216fdcd8514b7072b43653874fd688e4c6c003"
+git-tree-sha1 = "aa1261ebbac3ccc8d16558ae6799524c450ed16b"
 uuid = "0c0b7dd1-d40b-584c-a123-a41640f87eec"
-version = "1.0.12+0"
+version = "1.0.13+0"
 
 [[deps.Xorg_libXcursor_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_libXfixes_jll", "Xorg_libXrender_jll"]
