@@ -38,6 +38,8 @@ julia> generate_mnist_nets_verified_bounds(test_run=true)
 julia> generate_heloc_nets_verified_bounds(test_run=true)
 julia> warmup_eps_equivalence_mnist()  # to trigger precompilation
 julia> verify_eps_equivalence_mnist("2025-04-08", test_run=true)
+julia> warmup_eps_equivalence_heloc()
+julia> verify_eps_equivalence_heloc("2025-04-11T09:43")
 ```
 
 ## Ensure Single-Threaded Execution
