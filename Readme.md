@@ -5,6 +5,7 @@ Experimental Evaluation for Equivalence Verification of Polynomial Neural Networ
 # Repository Structure
 
 - `datasets`: Contains datasets used for training the verified neural networks (if directory is missing, it will be auto-extracted from `datasets.tar.gz` once calling `using VeryDiffPolyExperiments` in Julia)
+- `deps`: Contains code for other tools we evaluate against
 - `networks`: Neural networks used for verification and polynomial approximation in the experiments
 - `results`: Results of the experiments
 - `src`: Code to run the experiments
@@ -34,6 +35,7 @@ Once the environment is set up, we can run the experiments via (set `test_run=tr
 ```julia
 julia> using VeryDiffPolyExperiments
 julia> generate_mnist_nets_verified_bounds(test_run=true)
+julia> generate_heloc_nets_verified_bounds(test_run=true)
 julia> warmup_eps_equivalence_mnist()  # to trigger precompilation
 julia> verify_eps_equivalence_mnist("2025-04-08", test_run=true)
 ```
@@ -46,6 +48,16 @@ To ensure single-threaded execution, use
 taskset -c 0 julia
 ```
 to start Julia and pin it to processor $0$.
+
+## Running LIGAR
+
+To run the LIGAR experiments, create and activate the `ligar` conda environment and execute the shell script via
+```bash
+$ conda env create -f deps/ligar_reloaded/ligar_environment.yaml --name ligar 
+$ activate ligar
+$ ./run_ligar.sh
+```
+
 
 
 

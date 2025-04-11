@@ -48,8 +48,9 @@ function generate_mnist_nets_verified_bounds(;test_run=false)
     X_test, y_test = load_mnist_data()
     
     z = Zonotope(zeros(784), ones(784))
+    # need to add one as labels are they are 0 indexed
     generate_poly_networks(MNIST_MODEL_PATHS, z, degrees, log_file_prefix, 
-                                max_fun, mae_fun, mse_fun, acc_fun; X_test=X_test, y_labels=y_test, empirical=false, cheby=true, verbosity=0, 
+                                max_fun, mae_fun, mse_fun, acc_fun; X_test=X_test, y_labels=y_test .+ 1, empirical=false, cheby=true, verbosity=0, 
                                 max_iter=20, widen_factor=1.0)
 end
 

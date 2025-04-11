@@ -142,7 +142,7 @@ function generate_poly_network(net::Network, z::Zonotope, degree, max_fun, mae_f
         mae = mae_fun(y_test, ŷ)
         mse = mse_fun(y_test, ŷ)
         # need to add one as labels are 0 indexed
-        acc = acc_fun(y_labels .+ 1, ŷ)
+        acc = acc_fun(y_labels, ŷ)
         return nn_poly, max_err, mae, mse, acc
     else
         return nn_poly
@@ -183,7 +183,7 @@ function generate_poly_networks(net_paths::AbstractVector, z::Zonotope, degrees:
 
         ŷ = [net(x) for x in X_test]
         ŷ = hcat(ŷ...)'
-        original_acc = acc_fun(y_labels .+ 1, ŷ)
+        original_acc = acc_fun(y_labels, ŷ)
         println("\tOriginal accuracy: ", original_acc)
 
         max_errs = []
