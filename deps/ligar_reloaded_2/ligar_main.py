@@ -26,6 +26,20 @@ def load_model(model_path: str):
     W_list = []
     b_list = []
     params = model.graph.initializer
+
+    # stupid special case for mnist-net_256x6: ONNX sorts alphabetically instead of numerically
+    # and the activation layers are also numbered, so we have layer.12.weight, while the others only
+    # have fc6.weight, so alphabetically sorting works in that case
+    # We just divide the number by two, so we crudely fix it!
+    if params[0].name.startswith("layers.0"):
+        for param in params:
+            parts = param.name.split(".")
+            n = int(parts[1])
+            param.name = f"{parts[0]}.{int(n/2)}.{parts[-1]}"
+
+        # if we divide the layer number by two, we get below 10, so alphabetical sorting works again!
+        params.sort(key=lambda x: x.name)
+
     for param in params:
         if "bias" in param.name:
             b_list.append(onnx.numpy_helper.to_array(param))
@@ -33,6 +47,8 @@ def load_model(model_path: str):
             W_list.append(onnx.numpy_helper.to_array(param))
         else:
             raise RuntimeError(f"Unknown parameter name: {param.name}")
+        
+    print([W.shape for W in W_list])
 
     return W_list, b_list
 
