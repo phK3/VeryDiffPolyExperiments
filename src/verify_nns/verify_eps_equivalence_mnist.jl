@@ -44,9 +44,11 @@ function verify_eps_equivalence_sample_mnist(logfile_generated_filter::String; s
 
     println("[INFO] loading MNIST data ...")
     X_test, y_test = load_mnist_data()
-    xs = X_test[start_sample:start_sample+n_sample]
+    xs = X_test[start_sample:start_sample+n_sample-1]
 
-    verify_epsilon_equivalence_sample(logfiles_generated, xs, radii, l=0., u=1., use_approximation_domain=use_approximation_domain, test_run=test_run)
+    logfile_eps_equiv = string(@__DIR__, "/../../results/mnist/mnist_eps_equiv_samples_", now(), ".csv")
+
+    verify_epsilon_equivalence_sample_csv(logfiles_generated, logfile_eps_equiv, xs, radii, l=0., u=1., use_approximation_domain=use_approximation_domain, test_run=test_run)
 
     VeryDiff.ALMOST_ZERO_LEADING_COEFF_WARNING[] = saved_val
 end

@@ -176,3 +176,49 @@ function verify_epsilon_equivalence_sample(logfiles_generated::AbstractVector, x
         verify_epsilon_equivalence_sample(logfile_generated, logfile_eps_equiv, xs, radii; l=l, u=u, use_approximation_domain=use_approximation_domain, test_run=test_run)
     end
 end
+
+
+function verify_epsilon_equivalence_sample_csv(logfiles_generated::AbstractVector, logfile_eps_equiv::String, xs::AbstractVector, radii::AbstractVector; 
+    l=0., u=1., use_approximation_domain=true, test_run=false)
+
+    for (i, x) in enumerate(xs)
+        println("### Sample ", i)
+        for r in radii
+            println("## radius = ", r)
+
+            for logfile_generated_nns in logfiles_generated
+                nn, nn_polys, degrees = extract_networks_and_degrees_from_generated_log(logfile_generated_nns)
+                net_name = basename(map_logfile2network(logfile_generated_nns))
+                println("# net_name = ", net_name)
+        
+                if test_run
+                    nn_polys = nn_polys[[5, 14]]
+                    degrees = degrees[[5, 14]]
+                end
+
+                for (degree, nn_poly) in zip(degrees, nn_polys)
+                    println("# degree = ", degree)
+
+                    
+                    lb = clamp.(x .- r, l, u)
+                    ub = clamp.(x .+ r, l, u)
+
+                    z = Zonotope(lb, ub)
+
+                    t = @elapsed bounds = verify_epsilon_equivalence(nn_poly, nn, z; use_approximation_domain=use_approximation_domain)
+                    ∂bound = maximum(abs.(bounds))
+
+                    open(logfile_eps_equiv, "a") do f 
+                        # netname, degree, sample no., radius, bound, time
+                        println(f, string(net_name, ", ", degree, ", ", i, ", ", r, ", ", ∂bound, ", ", t))
+                    end
+
+                    println("\t", i, ": verified bound = ", ∂bound, " (", t, "s)")
+                end
+            end
+        end
+
+        println("----------------------------")
+    end
+
+end
