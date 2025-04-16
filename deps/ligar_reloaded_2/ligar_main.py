@@ -7,12 +7,15 @@ import numpy as np
 import onnx
 
 import time
+import re
 
 from algorithms.ligar.ligar_2 import ligar_design, ligar_output_bound
 
 
 MNIST_PATH = "../../datasets/mnist_train.csv"
 HELOC_PATH = "../../datasets/heloc_dataset.csv"
+HAR_PATH_X = "../../datasets/HAR_X_train.txt"
+HAR_PATH_Y = "../../datasets/HAR_y_train.txt"
 
 
 def load_model(model_path: str):
@@ -44,6 +47,10 @@ def load_model(model_path: str):
         if "bias" in param.name:
             b_list.append(onnx.numpy_helper.to_array(param))
         elif "weight" in param.name:
+            W_list.append(onnx.numpy_helper.to_array(param))
+        elif "B" in param.name:
+            b_list.append(onnx.numpy_helper.to_array(param))
+        elif "W" in param.name:
             W_list.append(onnx.numpy_helper.to_array(param))
         else:
             raise RuntimeError(f"Unknown parameter name: {param.name}")
@@ -107,6 +114,36 @@ def load_heloc(indices: Optional[List[int]] = None) -> List[np.ndarray]:
 
     return X, y
 
+
+def load_har(indices: Optional[List[int]] = None) -> List[np.ndarray]:
+    """Load HAR dataset from a CSV file.
+        If indices are provided, only those rows will be loaded.
+    """
+    X = []
+    y = []
+    try:
+        with open(HAR_PATH_X, 'r') as file:
+            for (i, line) in enumerate(file):
+                if indices is None or i in indices:
+                    row = re.split(r'\s+', line.strip())
+                    row = [float(val) for val in row]
+                    X.append(np.array(row))
+    except Exception as e:
+        raise RuntimeError(f"Failed to load inputs from {HAR_PATH_X}: {e}")
+
+    try:
+        with open(HAR_PATH_Y, 'r') as file:
+            for (i, line) in enumerate(file):
+                if indices is None or i in indices:
+                    row = re.split(r'\s+', line.strip())
+                    row = [float(val) for val in row]
+                    # should be the only entry
+                    y.append(row[0])
+    except Exception as e:
+        raise RuntimeError(f"Failed to load inputs from {HAR_PATH_Y}: {e}")
+
+    return X, y
+
 """
 Arguments:
     w_list: list of weight matrices
@@ -115,8 +152,10 @@ Arguments:
     x_ball: perturbation distance for each network input
     degrees: list of polynomial degrees to repeat the experiments on
     mode: either "approx" or "chebyshev"
+    global_lo: global lower bound to use for synthesis of nn
+    global_up: global upper bound to use for synthesis of nn
 """
-def compute_epsilon_bounds(w_list, b_list, x_list, x_ball, degrees, mode="chebyshev"):
+def compute_epsilon_bounds(w_list, b_list, x_list, x_ball, degrees, mode="chebyshev", global_lo=0., global_up=1.):
     """Compute the output error for each degree (and the runtime of the algorithm)."""
     out_bounds = []
     times = []
@@ -130,7 +169,7 @@ def compute_epsilon_bounds(w_list, b_list, x_list, x_ball, degrees, mode="chebys
         
         # entire input space [0,1]^n
         n = len(x_ball)
-        x_range = np.column_stack([np.zeros(n), np.ones(n)])
+        x_range = np.column_stack([global_lo * np.ones(n), global_up * np.ones(n)])
         
         # run a FastLin-style forward pass (parallel linear bounds)
         # we only care about the approximation error at each ReLU
@@ -175,6 +214,9 @@ def main():
     input_dim = -1
     center = None
     whole_input_space = False
+    # assume that input is in [0, 1]^n as default
+    global_lo = 0.
+    global_up = 1.
     assert not (args.indices and (args.n_inputs > -1)), "Either --indices or --n_inputs should be provided, not both"
     if (not args.indices) and (args.n_inputs == -1):
         whole_input_space = True
@@ -197,6 +239,15 @@ def main():
             x_list = [np.repeat(center, input_dim)]
         else:
             x_list, _ = load_heloc(args.indices) 
+    elif args.dataset == "har":
+        input_dim = 561
+        center = 0.
+        global_lo = -1.
+        global_up = 1.
+        if whole_input_space:
+            x_list = [np.repeat(center, input_dim)]
+        else:
+            x_list, _ = load_har(args.indices)
 
     # TODO: the input balls are x_list +/- eps_in
     x_ball = np.repeat(args.eps_in, input_dim)
@@ -204,7 +255,8 @@ def main():
     w_list, b_list = load_model(args.model)
 
     out_bounds, times = compute_epsilon_bounds(w_list, b_list, x_list, x_ball, args.degrees,
-                                      mode="chebyshev" if args.chebyshev else "approx")
+                                      mode="chebyshev" if args.chebyshev else "approx", 
+                                      global_lo=global_lo, global_up=global_up)
     # Save results to CSV
     np.savetxt(args.output, np.column_stack([args.degrees, out_bounds, times]), delimiter=",")
 
