@@ -24,10 +24,12 @@ include("generate_nns/generate_nns_har.jl")
 include("verify_nns/verify_eps_equivalence.jl")
 include("verify_nns/verify_eps_equivalence_mnist.jl")
 include("verify_nns/verify_eps_equivalence_heloc.jl")
+include("verify_nns/verify_eps_equivalence_har.jl")
 
 
 export generate_mnist_nets_verified_bounds, generate_mnist_nets_empirical_bounds, generate_har_nets_verified_bounds,
        verify_eps_equivalence_mnist, warmup_eps_equivalence_mnist, verify_eps_equivalence_sample_mnist,
-        generate_heloc_nets_verified_bounds, verify_eps_equivalence_heloc, warmup_eps_equivalence_heloc
+        generate_heloc_nets_verified_bounds, verify_eps_equivalence_heloc, warmup_eps_equivalence_heloc,
+        verify_eps_equivalence_har, verify_eps_equivalence_sample_har
 
 end # module VeryDiffPolyExperiments
