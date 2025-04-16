@@ -36,6 +36,6 @@ taskset -c 0 python "$LIGAR_PATH" --model networks/har/har_2e5.onnx --output res
 taskset -c 0 python "$LIGAR_PATH" --model networks/har/har_1e4.onnx --output results/har/ligar_har_1e4_approx_global.csv --dataset har --eps_in $EPS 
 
 # run LIGAR on HAR with concrete Chebyshev approximation for error computation
-taskset -c 0 python "$LIGAR_PATH" --model networks/har/har.onnx --output results/har/ligar_har_cheby_approx_global.csv --dataset har --eps_in $EPS --chebyshev
-taskset -c 0 python "$LIGAR_PATH" --model networks/har/har_2e5.onnx --output results/har/ligar_har_cheby_2e5_approx_global.csv --dataset har --eps_in $EPS --chebyshev
-taskset -c 0 python "$LIGAR_PATH" --model networks/har/har_1e4.onnx --output results/har/ligar_har_cheby_1e4_approx_global.csv --dataset har --eps_in $EPS --chebyshev
+taskset -c 0 python "$LIGAR_PATH" --model networks/har/har.onnx --output results/har/ligar_har_cheby_global.csv --dataset har --eps_in $EPS --chebyshev
+taskset -c 0 python "$LIGAR_PATH" --model networks/har/har_2e5.onnx --output results/har/ligar_har_cheby_2e5_global.csv --dataset har --eps_in $EPS --chebyshev
+taskset -c 0 python "$LIGAR_PATH" --model networks/har/har_1e4.onnx --output results/har/ligar_har_cheby_1e4_global.csv --dataset har --eps_in $EPS --chebyshev
