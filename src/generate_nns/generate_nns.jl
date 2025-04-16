@@ -180,7 +180,8 @@ function generate_poly_networks(net_paths::AbstractVector, z::Zonotope, degrees:
         original_acc = acc_fun(y_labels, ŷ)
         println("\tOriginal accuracy: ", original_acc)
 
-        if isnothing(bounds)
+        bounds_net = bounds
+        if empirical && isnothing(bounds)
             # compute empirical bounds here once for each network instead of every iteration
             println("[INFO] Computing empirical bounds...")
             bounds_net = get_empirical_bounds(net, X_test)

@@ -37,7 +37,7 @@ function load_mnist_data(;test_data=false)
 end
 
 
-function generate_mnist_nets_verified_bounds(;test_run=false)
+function generate_mnist_nets_verified_bounds(;max_iter=20, test_run=false)
     degrees = test_run ? [5, 20] : MNIST_DEGREES
     test_run && println("[INFO] Generating MNIST networks TESTRUN ...")
 
@@ -53,7 +53,7 @@ function generate_mnist_nets_verified_bounds(;test_run=false)
     # need to add one as labels are they are 0 indexed
     generate_poly_networks(MNIST_MODEL_PATHS, z, degrees, log_file_prefix, 
                                 max_fun, mae_fun, mse_fun, acc_fun; X_test=X_test, y_labels=y_test .+ 1, empirical=false, cheby=true, verbosity=0, 
-                                max_iter=20, widen_factor=1.0)
+                                max_iter=max_iter, widen_factor=1.0)
 end
 
 
