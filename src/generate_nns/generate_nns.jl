@@ -136,13 +136,7 @@ function generate_poly_network(net::Network, z::Zonotope, degree, max_fun, mae_f
     end
 
     if !isnothing(X_test) && !isnothing(y_test)
-        ŷ = [nn_poly(x) for x in X_test]
-        ŷ = hcat(ŷ...)'
-        max_err = max_fun(y_test, ŷ)
-        mae = mae_fun(y_test, ŷ)
-        mse = mse_fun(y_test, ŷ)
-        # need to add one as labels are 0 indexed
-        acc = acc_fun(y_labels, ŷ)
+        max_err, mae, mse, acc, _ = evaluate_network(nn_poly, X_test, y_test, y_labels, max_fun, mae_fun, mse_fun, acc_fun)
         return nn_poly, max_err, mae, mse, acc
     else
         return nn_poly
@@ -176,7 +170,7 @@ function generate_poly_networks(net_paths::AbstractVector, z::Zonotope, degrees:
         println("\t\t- ", log_file_name)
     end
 
-    for (net_path, log_file_name) in zip(net_paths, log_file_names)
+    for (i, (net_path, log_file_name)) in enumerate(zip(net_paths, log_file_names))
         println("\n## net_path: ", net_path)
 
         net = load_network(net_path)
@@ -186,6 +180,12 @@ function generate_poly_networks(net_paths::AbstractVector, z::Zonotope, degrees:
         original_acc = acc_fun(y_labels, ŷ)
         println("\tOriginal accuracy: ", original_acc)
 
+        if isnothing(bounds)
+            # compute empirical bounds here once for each network instead of every iteration
+            println("[INFO] Computing empirical bounds...")
+            bounds_net = get_empirical_bounds(net, X_test)
+        end
+
         max_errs = []
         maes = []
         mses = []
@@ -194,7 +194,7 @@ function generate_poly_networks(net_paths::AbstractVector, z::Zonotope, degrees:
         nets = []
         for degree in degrees
             t = @elapsed nn_poly, max_err, mae, mse, acc = generate_poly_network(net, z, degree, max_fun, mae_fun, mse_fun, acc_fun; 
-                                                                        bounds=bounds, X_test=X_test, y_test=ŷ, y_labels=y_labels, 
+                                                                        bounds=bounds_net, X_test=X_test, y_test=ŷ, y_labels=y_labels, 
                                                                         empirical=empirical, cheby=cheby, verbosity=verbosity, max_iter=max_iter,
                                                                         widen_factor=widen_factor)
             

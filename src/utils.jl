@@ -50,6 +50,19 @@ function extract_networks_and_degrees_from_generated_log(logfile)
 end
 
 
+function evaluate_network(nn_poly, X_test, y_test, y_labels, max_fun, mae_fun, mse_fun, acc_fun)
+    ŷ = [nn_poly(x) for x in X_test]
+    ŷ = hcat(ŷ...)'
+    max_err = max_fun(y_test, ŷ)
+    mae = mae_fun(y_test, ŷ)
+    mse = mse_fun(y_test, ŷ)
+    acc = acc_fun(y_labels, ŷ)
+    n_nan = sum(isnan.(ŷ))
+
+    return max_err, mae, mse, acc, n_nan
+end
+
+
 #function get_logfiles(path; file_filter="")
 #    logfiles_generated = readdir(string(@__DIR__, "/../", path), join=true)
 #    logfiles_generated = filter(x -> contains(x, file_filter), logfiles_generated)
@@ -59,3 +72,47 @@ end
 #function logfile2netname(logfile)
 #    basename(map_logfile2network.(logfile))
 #end
+
+
+"""
+Appends empirical data for the given dataset (X, y) to the specified logfile.
+
+If the prefix <prefix> is given, then the following entries will be appended:
+- <prefix>_accs
+- <prefix>_mses
+- <prefix>_maes
+- <prefix>_max_errs
+
+
+"""
+function append_dataset_results_to_log(logfile::String, X, y, prefix::String,
+                                       max_fun, mae_fun, mse_fun, acc_fun; verbosity=0)
+    nn, nn_polys, degrees = extract_networks_and_degrees_from_generated_log(logfile)
+
+    ŷ = [nn(x) for x in X]
+    ŷ = hcat(ŷ...)'
+
+    max_errs = Float64[]
+    maes = Float64[]
+    mses = Float64[]
+    accs = Float64[]
+    nans = Int[]
+    for (degree, nn_poly) in zip(degrees, nn_polys)
+        max_err, mae, mse, acc, n_nan = evaluate_network(nn_poly, X, ŷ, y, max_fun, mae_fun, mse_fun, acc_fun)
+        push!(max_errs, max_err)
+        push!(maes, mae)
+        push!(mses, mse)
+        push!(accs, acc)
+        push!(nans, n_nan)
+
+        verbosity > 0 && println("degree = ", degree, ", max_err = ", max_err, ", mae = ", mae, ", mse = ", mse, ", acc = ", acc, ", nans = ", n_nan)
+    end
+
+    jldopen(logfile, "a+") do file
+        file[string(prefix, "_accs")] = accs
+        file[string(prefix, "_mses")] = mses
+        file[string(prefix, "_maes")] = maes
+        file[string(prefix, "_max_errs")] = max_errs
+        file[string(prefix, "_nan")] = nans
+    end
+end
