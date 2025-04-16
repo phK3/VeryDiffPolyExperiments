@@ -44,8 +44,8 @@ julia> verify_eps_equivalence_sample_mnist("2025-04-08", test_run=true)
 julia> verify_eps_equivalence_sample_mnist("2025-04-08", n_sample=25)
 julia> generate_har_nets_verified_bounds(test_run=true)  # for precompilation
 julia> generate_har_nets_verified_bounds()
-julia> verify_eps_equivalence_hat("2025-04-16", test_run=true)  # for precompilation
-julia> verify_eps_equivalence_hat("2025-04-16")
+julia> verify_eps_equivalence_har("2025-04-16", test_run=true)  # for precompilation
+julia> verify_eps_equivalence_har("2025-04-16")
 ```
 
 ## Ensure Single-Threaded Execution
