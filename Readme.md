@@ -40,6 +40,8 @@ julia> warmup_eps_equivalence_mnist()  # to trigger precompilation
 julia> verify_eps_equivalence_mnist("2025-04-08", test_run=true)
 julia> warmup_eps_equivalence_heloc()
 julia> verify_eps_equivalence_heloc("2025-04-11T09:43")
+julia> verify_eps_equivalence_sample_mnist("2025-04-08", test_run=true)
+julia> verify_eps_equivalence_sample_mnist("2025-04-08", n_sample=25)
 ```
 
 ## Ensure Single-Threaded Execution
