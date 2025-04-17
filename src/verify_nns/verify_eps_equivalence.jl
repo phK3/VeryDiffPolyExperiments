@@ -179,10 +179,11 @@ end
 
 
 function verify_epsilon_equivalence_sample_csv(logfiles_generated::AbstractVector, logfile_eps_equiv::String, xs::AbstractVector, radii::AbstractVector; 
-    l=0., u=1., use_approximation_domain=true, test_run=false)
+                                               only_degrees=nothing, l=0., u=1., use_approximation_domain=true, test_run=false, start_sample=1)
 
     for (i, x) in enumerate(xs)
-        println("### Sample ", i)
+        sample_nr = i + start_sample - 1
+        println("### Sample ", sample_nr)
         for r in radii
             println("## radius = ", r)
 
@@ -191,7 +192,12 @@ function verify_epsilon_equivalence_sample_csv(logfiles_generated::AbstractVecto
                 net_name = basename(map_logfile2network(logfile_generated_nns))
                 println("# net_name = ", net_name)
         
-                if test_run
+                if !isnothing(only_degrees)
+                    idxs = findall(x -> x in only_degrees, degrees)
+                    idxs = test_run ? [idxs[1]] : idxs
+                    nn_polys = nn_polys[idxs]
+                    degrees = only_degrees
+                elseif test_run
                     nn_polys = nn_polys[[5, 14]]
                     degrees = degrees[[5, 14]]
                 end
@@ -210,10 +216,10 @@ function verify_epsilon_equivalence_sample_csv(logfiles_generated::AbstractVecto
 
                     open(logfile_eps_equiv, "a") do f 
                         # netname, degree, sample no., radius, bound, time
-                        println(f, string(net_name, ", ", degree, ", ", i, ", ", r, ", ", ∂bound, ", ", t))
+                        println(f, string(net_name, ", ", degree, ", ", sample_nr, ", ", r, ", ", ∂bound, ", ", t))
                     end
 
-                    println("\t", i, ": verified bound = ", ∂bound, " (", t, "s)")
+                    println("\t", sample_nr, ": verified bound = ", ∂bound, " (", t, "s)")
                 end
             end
         end

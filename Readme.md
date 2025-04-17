@@ -46,6 +46,10 @@ julia> generate_har_nets_verified_bounds(test_run=true)  # for precompilation
 julia> generate_har_nets_verified_bounds()
 julia> verify_eps_equivalence_har("2025-04-16", test_run=true)  # for precompilation
 julia> verify_eps_equivalence_har("2025-04-16")
+julia> generate_mnist_nets_verified_bounds(max_iter=1, test_run=true)  # ablation for influence of remez vs. cheby
+julia> generate_mnist_nets_verified_bounds(max_iter=1)
+julia> verify_eps_equivalence_sample_mnist("2025-04-08", only_degrees=[5], test_run=true)
+julia> verify_eps_equivalence_sample_mnist("2025-04-08", only_degrees=[200], n_sample=10)
 ```
 
 ## Ensure Single-Threaded Execution

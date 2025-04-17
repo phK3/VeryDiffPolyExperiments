@@ -25,12 +25,14 @@ function warmup_eps_equivalence_mnist()
 end
 
 
-function verify_eps_equivalence_sample_mnist(logfile_generated_filter::String; start_sample=1, n_sample=10, radii=nothing, use_approximation_domain=true, test_run=false)
+function verify_eps_equivalence_sample_mnist(logfile_generated_filter::String; start_sample=1, n_sample=10, radii=nothing, 
+                                             use_approximation_domain=true, only_degrees=nothing, test_run=false)
     println("### Verifying epsilon equivalence MNIST ###")
     test_run && println("[INFO] TESTRUN ...")
     n_sample = test_run ? 1 : n_sample
     radii = test_run ? [0.05] : radii
     radii = isnothing(radii) ? [0.01, 0.03, 0.05] : radii
+    !isnothing(only_degrees) && println("[INFO] only considering degrees ", only_degrees)
     println("[INFO] start_sample = ", start_sample, ", n_sample = ", n_sample)
     println("[INFO] turn off warnings for almost zero leading coeffs ...")
     # TODO: why is this still happening?
@@ -48,7 +50,9 @@ function verify_eps_equivalence_sample_mnist(logfile_generated_filter::String; s
 
     logfile_eps_equiv = string(@__DIR__, "/../../results/mnist/mnist_eps_equiv_samples_", now(), ".csv")
 
-    verify_epsilon_equivalence_sample_csv(logfiles_generated, logfile_eps_equiv, xs, radii, l=0., u=1., use_approximation_domain=use_approximation_domain, test_run=test_run)
+    verify_epsilon_equivalence_sample_csv(logfiles_generated, logfile_eps_equiv, xs, radii, l=0., u=1., 
+                                          use_approximation_domain=use_approximation_domain, test_run=test_run,
+                                          only_degrees=only_degrees, start_sample=start_sample)
 
     VeryDiff.ALMOST_ZERO_LEADING_COEFF_WARNING[] = saved_val
 end
