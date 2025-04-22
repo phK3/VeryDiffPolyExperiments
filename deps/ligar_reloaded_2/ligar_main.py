@@ -76,7 +76,7 @@ def load_mnist(indices: Optional[List[int]] = None) -> List[np.ndarray]:
             reader = csv.reader(csvfile)
             for i, row in enumerate(reader):
                 if indices is None or i in indices:
-                    inputs.append(np.array([float(x) for x in row[1:]]))
+                    inputs.append(np.array([float(x) for x in row]))
     except Exception as e:
         raise RuntimeError(f"Failed to load inputs from {MNIST_PATH}: {e}")
     
@@ -232,6 +232,7 @@ def main():
             x_list = [np.repeat(center, input_dim)]
         else:
             x_list, _ = load_mnist(args.indices)
+            print([x.shape for x in x_list])
     elif args.dataset == "heloc":
         input_dim = 23
         center = 0.5
