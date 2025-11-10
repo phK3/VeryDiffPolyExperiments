@@ -42,7 +42,7 @@ kwargs:
 returns:
     bounds_diff - (n_out x 2)-array holding lower and upper bounds for the difference of each output neuron 
 """
-function verify_epsilon_equivalence(nn_poly::Network, nn::Network, z::Zonotope; use_approximation_domain=true)
+function verify_epsilon_equivalence(nn_poly::LayeredModel, nn::LayeredModel, z::Zonotope; use_approximation_domain=true)
     nn_diff = GeminiNetwork(nn_poly, nn)
 
     ∂z = Zonotope(zero(z.G), zero(z.c), nothing)

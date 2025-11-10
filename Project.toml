@@ -15,9 +15,11 @@ Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 VNNLib = "286915b0-5841-4eea-9013-d818f395ad8c"
 VeryDiff = "46246037-a9ce-44df-b2b1-49d8cf705fcd"
 
+
 [sources]
-VNNLib = {url = "https://github.com/phK3/VNNLib.jl"}
-VeryDiff = {rev = "PolynomialEquivalence", url = "https://github.com/samysweb/VeryDiff"}
+VNNLib = {url = "https://github.com/samysweb/VNNLib.jl"}
+VeryDiff = {rev = "fhe_circuit", url = "https://github.com/samysweb/VeryDiff"}
+
 
 [compat]
 CSV = "0.10.15"
@@ -28,5 +30,5 @@ JLD2 = "0.5.12"
 LinearAlgebra = "1.11.0"
 Polynomials = "4.1.0"
 Tar = "1.10.0"
-VNNLib = "0.2.3"
+VNNLib = "0.3.0"
 VeryDiff = "0.1.0"

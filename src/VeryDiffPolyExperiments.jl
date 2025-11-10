@@ -3,7 +3,7 @@ module VeryDiffPolyExperiments
 using VeryDiff, VNNLib, LinearAlgebra
 using Tar, CodecZlib, JLD2, CSV, Dates
 
-import VeryDiff: approximate_polynomial, approximate_polynomial_iterative, extract_approximation_domain
+import VeryDiff: approximate_polynomial, approximate_polynomial_iterative, extract_approximation_domain, LayeredModel, to_layered_model
 
 
 function __init__()

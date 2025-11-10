@@ -14,7 +14,7 @@ returns:
     bounds - list of (n_neurons x 2)-array for each layer holding lower and upper bounds for each neuron 
              after that layer was applied
 """
-function get_empirical_bounds(net::Network, z::Zonotope; n_inputs=1000)
+function get_empirical_bounds(net::LayeredModel, z::Zonotope; n_inputs=1000)
     bounds = []
 
     for i in 1:n_inputs
@@ -46,7 +46,7 @@ returns:
     bounds - list of (n_neurons x 2)-array for each layer holding lower and upper bounds for each neuron 
              after that layer was applied
 """
-function get_empirical_bounds(net::Network, X_in::AbstractVector)
+function get_empirical_bounds(net::LayeredModel, X_in::AbstractVector)
     bounds = []
 
     for x in X_in
@@ -124,7 +124,7 @@ kwargs:
     max_iter - maximum number of iterations of the Remez algorithm for polynomial approximation
     widen_factor - factor to widen empirical the bounds by
 """
-function generate_poly_network(net::Network, z::Zonotope, degree, max_fun, mae_fun, mse_fun, acc_fun; 
+function generate_poly_network(net::LayeredModel, z::Zonotope, degree, max_fun, mae_fun, mse_fun, acc_fun; 
                               bounds=nothing, X_test=nothing, y_test=nothing, y_labels=nothing, 
                               empirical=false, cheby=true, verbosity=0, max_iter=20, widen_factor=1.0)
     if empirical
@@ -173,7 +173,9 @@ function generate_poly_networks(net_paths::AbstractVector, z::Zonotope, degrees:
     for (i, (net_path, log_file_name)) in enumerate(zip(net_paths, log_file_names))
         println("\n## net_path: ", net_path)
 
-        net = load_network(net_path)
+        onnx_net = load_network(net_path)
+        net = to_layered_model(onnx_net)
+
 
         ŷ = [net(x) for x in X_test]
         ŷ = hcat(ŷ...)'
