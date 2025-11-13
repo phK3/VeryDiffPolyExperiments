@@ -1958,8 +1958,8 @@ uuid = "286915b0-5841-4eea-9013-d818f395ad8c"
 version = "0.3.0"
 
 [[deps.VeryDiff]]
-deps = ["ArgParse", "CSV", "DataStructures", "DoubleFloats", "GLPK", "Gurobi", "JLD2", "JuMP", "LinearAlgebra", "MaskedArrays", "Optim", "PackageCompiler", "Plots", "PolynomialRoots", "Printf", "Random", "SparseArrays", "SymbolicUtils", "ThreadPinning", "TimerOutputs", "VNNLib"]
-git-tree-sha1 = "df51e9ca392152adabe0ddb2891b38f9de3ec962"
+deps = ["ArgParse", "CSV", "DataStructures", "DoubleFloats", "GLPK", "Gurobi", "JLD2", "JuMP", "LinearAlgebra", "MaskedArrays", "Optim", "PackageCompiler", "Plots", "PolynomialRoots", "Printf", "Random", "SparseArrays", "SpecialFunctions", "SymbolicUtils", "ThreadPinning", "TimerOutputs", "VNNLib"]
+git-tree-sha1 = "2a695e9986b082ef27574581974b57d345886c7d"
 repo-rev = "fhe_circuit"
 repo-url = "https://github.com/samysweb/VeryDiff"
 uuid = "46246037-a9ce-44df-b2b1-49d8cf705fcd"
