@@ -1,9 +1,11 @@
 module VeryDiffPolyExperiments
 
 using VeryDiff, VNNLib, LinearAlgebra
-using Tar, CodecZlib, JLD2, CSV, Dates
+using Tar, CodecZlib, JLD2, JSON3, CSV, Dates
 
 import VeryDiff: approximate_polynomial, approximate_polynomial_iterative, extract_approximation_domain, LayeredModel, to_layered_model
+
+const OXP = VNNLib.OnnxParser
 
 
 function __init__()
@@ -17,6 +19,7 @@ function __init__()
 end
 
 include("utils.jl")
+include("fhe_export/json_export.jl")
 include("generate_nns/generate_nns.jl")
 include("generate_nns/generate_nns_mnist.jl")
 include("generate_nns/generate_nns_heloc.jl")
@@ -25,6 +28,8 @@ include("verify_nns/verify_eps_equivalence.jl")
 include("verify_nns/verify_eps_equivalence_mnist.jl")
 include("verify_nns/verify_eps_equivalence_heloc.jl")
 include("verify_nns/verify_eps_equivalence_har.jl")
+
+
 
 
 export generate_mnist_nets_verified_bounds, generate_mnist_nets_empirical_bounds, generate_har_nets_verified_bounds,
