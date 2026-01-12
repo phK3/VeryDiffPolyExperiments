@@ -75,6 +75,7 @@ end
 
 
 function export2json(net::LayeredModel{S}, outfile) where S
+    net = merge_normalization_into_dense(net)
     list_of_tuples = convert_to_list_of_tuples(net)
     s = sprint(JSON3.pretty, list_of_tuples)
     write(outfile, s)
