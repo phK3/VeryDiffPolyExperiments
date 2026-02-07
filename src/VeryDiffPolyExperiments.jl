@@ -3,7 +3,8 @@ module VeryDiffPolyExperiments
 using VeryDiff, VNNLib, LinearAlgebra
 using Tar, CodecZlib, JLD2, JSON3, CSV, Dates
 
-import VeryDiff: approximate_polynomial, approximate_polynomial_iterative, extract_approximation_domain, LayeredModel, to_layered_model
+import VeryDiff: approximate_polynomial, approximate_polynomial_iterative, approximate_polynomial_abcrown, approximate_polynomial_iterative_sampling,
+                 extract_approximation_domain, LayeredModel, to_layered_model
 
 const OXP = VNNLib.OnnxParser
 
@@ -19,6 +20,7 @@ function __init__()
 end
 
 include("utils.jl")
+include("verydiff_patch/patch.jl")
 include("fhe_export/json_export.jl")
 include("generate_nns/generate_nns.jl")
 include("generate_nns/generate_nns_mnist.jl")
@@ -28,6 +30,7 @@ include("verify_nns/verify_eps_equivalence.jl")
 include("verify_nns/verify_eps_equivalence_mnist.jl")
 include("verify_nns/verify_eps_equivalence_heloc.jl")
 include("verify_nns/verify_eps_equivalence_har.jl")
+include("gelu/generate_nns_gelu.jl")
 
 
 
