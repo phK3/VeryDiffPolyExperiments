@@ -39,21 +39,28 @@ function compute_approximation_stats(onnx_path, degrees, X_test, y_labels; max_p
     accs_single = []
 
     for d in degrees
-        if mode == :sampling
-            nn_poly = approximate_polynomial_iterative_sampling(nn, X_test, d, max_polys_per_layer=max_polys_per_layer, verbosity=verbosity, max_iter=max_iter)
-        elseif mode == :sampling01
-            nn_poly = approximate_polynomial_iterative_sampling(nn, X_rand, d, max_polys_per_layer=max_polys_per_layer, verbosity=verbosity, max_iter=max_iter)
-        elseif mode == :abcrown 
-            nn_poly = approximate_polynomial_abcrown(onnx_path, d, max_polys_per_layer=max_polys_per_layer, max_iter=max_iter, verbosity=verbosity);
-        elseif mode == :zono
-            nn_poly = approximate_polynomial_iterative(nn, Zonotope(zeros(784), ones(784)), d, max_polys_per_layer=max_polys_per_layer, verbosity=verbosity, max_iter=max_iter)
-        else 
-            @assert false "unknown mode $mode"
-        end
+        max_err, mae, mse, acc = Inf, Inf, Inf, 0.
+        try 
+            if mode == :sampling
+                nn_poly = approximate_polynomial_iterative_sampling(nn, X_test, d, max_polys_per_layer=max_polys_per_layer, verbosity=verbosity, max_iter=max_iter)
+            elseif mode == :sampling01
+                nn_poly = approximate_polynomial_iterative_sampling(nn, X_rand, d, max_polys_per_layer=max_polys_per_layer, verbosity=verbosity, max_iter=max_iter)
+            elseif mode == :abcrown 
+                nn_poly = approximate_polynomial_abcrown(onnx_path, d, max_polys_per_layer=max_polys_per_layer, max_iter=max_iter, verbosity=verbosity);
+            elseif mode == :zono
+                nn_poly = approximate_polynomial_iterative(nn, Zonotope(zeros(784), ones(784)), d, max_polys_per_layer=max_polys_per_layer, verbosity=verbosity, max_iter=max_iter)
+            else 
+                @assert false "unknown mode $mode"
+            end
 
-        X = mode == :sampling01 ? X_rand : X_test
+            X = mode == :sampling01 ? X_rand : X_test
 
-        max_err, mae, mse, acc, _ = evaluate_network(nn_poly, X, ŷ, y_labels, max_fun, mae_fun, mse_fun, acc_fun)
+            max_err, mae, mse, acc, _ = evaluate_network(nn_poly, X, ŷ, y_labels, max_fun, mae_fun, mse_fun, acc_fun)
+        catch e 
+            @warn "Got exception $e !!!"
+            println("Setting error metrics to worst case!")
+        end 
+
         push!(max_errs_single, max_err)
         push!(maes_single, mae)
         push!(mses_single, mse)
