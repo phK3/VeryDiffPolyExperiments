@@ -46,7 +46,9 @@ function compute_approximation_stats(onnx_path, degrees, X_test, y_labels; max_p
             elseif mode == :sampling01
                 nn_poly = approximate_polynomial_iterative_sampling(nn, X_rand, d, max_polys_per_layer=max_polys_per_layer, verbosity=verbosity, max_iter=max_iter)
             elseif mode == :abcrown 
-                nn_poly = approximate_polynomial_abcrown(onnx_path, d, max_polys_per_layer=max_polys_per_layer, max_iter=max_iter, verbosity=verbosity);
+                nn_poly = approximate_polynomial_abcrown(onnx_path, d, max_polys_per_layer=max_polys_per_layer, max_iter=max_iter, verbosity=verbosity, tight_gelu=false);
+            elseif mode == :abcrowntight
+                nn_poly = approximate_polynomial_abcrown(onnx_path, d, max_polys_per_layer=max_polys_per_layer, max_iter=max_iter, verbosity=verbosity, tight_gelu=true);
             elseif mode == :zono
                 nn_poly = approximate_polynomial_iterative(nn, Zonotope(zeros(784), ones(784)), d, max_polys_per_layer=max_polys_per_layer, verbosity=verbosity, max_iter=max_iter)
             else 
@@ -98,6 +100,14 @@ function generate_gelu_nets(onnx_paths, degrees; max_polys_per_layer=Inf, max_it
         max_errs, maes, mses, accs = compute_approximation_stats(onnx_path, degrees, X_test, y_labels; max_polys_per_layer=max_polys_per_layer, max_iter=max_iter, mode=mode)
         result_dict["$(net_name)_abcrown"] = (max_errs=max_errs, maes=maes, mses=mses, accs=accs)
 
+        if occursin("gelu", onnx_path)
+            # don't need to run tight init for gelu on non-gelu benchmarks, it will make no difference there
+            @info "Using :abcrowntight for network $(net_name)"
+            mode = :abcrowntight
+            max_errs, maes, mses, accs = compute_approximation_stats(onnx_path, degrees, X_test, y_labels; max_polys_per_layer=max_polys_per_layer, max_iter=max_iter, mode=mode)
+            result_dict["$(net_name)_abcrowntight"] = (max_errs=max_errs, maes=maes, mses=mses, accs=accs)
+        end
+
         @info "Using :sampling for network $(net_name)"
         mode = :sampling
         max_errs, maes, mses, accs = compute_approximation_stats(onnx_path, degrees, X_test, y_labels; max_polys_per_layer=max_polys_per_layer, max_iter=max_iter, mode=mode)
@@ -114,7 +124,7 @@ function generate_gelu_nets()
     onnx_prefix = string(@__DIR__, "/../../networks/mnist/")
     onnx_paths = [
         string(onnx_prefix, "mnist_gelu_256x4_1e4.onnx"), 
-        string(onnx_prefix, "mnist/mnist_256x4_1e4.onnx"), 
+        string(onnx_prefix, "mnist_256x4_1e4.onnx"), 
         string(onnx_prefix, "mnist_scaled_gelu_256x4_1e4.onnx")
     ]
 
