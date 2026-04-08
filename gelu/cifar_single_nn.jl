@@ -5,9 +5,10 @@ VeryDiff.ALMOST_ZERO_LEADING_COEFF_WARNING[] = false
 
 dataset = CIFAR10(Tx=Float64, split=:test)
 
-degree = 20
-model_path = joinpath(@__DIR__, "..", "networks", "cifar", "conv_bn_fused.onnx")  # small model 54% accuracy
+degree = 50
+# model_path = joinpath(@__DIR__, "..", "networks", "cifar", "conv_bn_fused.onnx")  # small model 54% accuracy
 # model_path = joinpath(@__DIR__, "..", "networks", "cifar", "best_model_bn_8_0.0001l1.onnx")  # large model 78% accuracy
+model_path = joinpath(@__DIR__, "..", "networks", "cifar", "best_model_bn_8_0.0001l1_no_pad.onnx")  # large model 77% accuracy
 model = load_onnx_model(model_path);
 
 ## Check accuracy of the base model on the test set
