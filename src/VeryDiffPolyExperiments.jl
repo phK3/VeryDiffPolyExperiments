@@ -27,6 +27,7 @@ include("fhe_export/json_export.jl")
 
 include("gelu/util.jl")
 include("gelu/collins.jl")
+include("gelu/nn4sys.jl")
 
 #include("generate_nns/generate_nns.jl")
 #include("generate_nns/generate_nns_mnist.jl")
