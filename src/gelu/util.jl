@@ -20,7 +20,7 @@ function evaluate_network(model, X, y, metric; y_pred=nothing)
     if !isnothing(y_pred)
         ϵ_sample = maximum(abs.(y_pred - ŷ))
         println("Sampled Error: ", ϵ_sample)
-        return mse, t_eval, ϵ_sample
+        return ŷ, mse, t_eval, ϵ_sample
     end
 
     return ŷ, mse, t_eval
@@ -43,7 +43,7 @@ args:
 """
 function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric)
     println("Generating polynomial networks for ", onnx_path)
-    println("Using ", min(Threads.nthreads(), VeryDiff.approx_poly_threads[]), " threads for approximation")
+    println("Using ", min(Threads.nthreads(), VeryDiff.APPROX_POLY_THREADS[]), " threads for approximation")
     
     logfile = string(basename(onnx_path)[1:end-5], "_results_", now(), ".jld2")
     println("Logging results to ", logfile)
@@ -74,11 +74,13 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
             "t_verifies" => t_verifies,
             "t_evals" => t_evals,
             "threads" => Threads.nthreads(),
-            "approx_poly_threads" => VeryDiff.approx_poly_threads[]
+            "approx_poly_threads" => VeryDiff.APPROX_POLY_THREADS[]
         )
     for d in degrees
         println("Approximating with degree ", d, "...")
-        model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, verbosity=1)
+        t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, verbosity=1)
+        println("Approximation Time: ", t_approx)
+        
         model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes))
 
         ŷ_poly, mse_poly, t_eval, ϵ_sample = evaluate_network(model_poly_dense, X_test, y_test, metric; y_pred=ŷ)
@@ -99,5 +101,13 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
 
         println("Degree: ", d, " ϵ: ", ϵ, ", ϵ_sample: ", ϵ_sample, ", acc/mse (poly): ", mse_poly, ", t_approx: ", t_approx, " t_verify: ", t_verify, " t_eval: ", t_eval)
     end
+end
 
+
+function warmup(;n_threads=Threads.nthreads())
+    VeryDiff.APPROX_POLY_THREADS[] = n_threads
+    @info "Running low degree for warm up (precompilation)..."
+    onnx_path = joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx")
+    degrees = [5]
+    generate_collins(onnx_path, degrees)
 end

@@ -8,6 +8,8 @@ import VeryDiff: approximate_polynomial, approximate_polynomial_iterative, appro
 
 const OXP = VNNLib.OnnxParser
 
+VeryDiff.ALMOST_ZERO_LEADING_COEFF_WARNING[] = false
+
 
 function __init__()
     if !isdir(string(@__DIR__, "/../datasets"))
@@ -22,6 +24,10 @@ end
 include("utils.jl")
 include("verydiff_patch/patch.jl")
 include("fhe_export/json_export.jl")
+
+include("gelu/util.jl")
+include("gelu/collins.jl")
+
 #include("generate_nns/generate_nns.jl")
 #include("generate_nns/generate_nns_mnist.jl")
 #include("generate_nns/generate_nns_heloc.jl")

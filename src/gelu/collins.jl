@@ -1,7 +1,7 @@
 
 
-COLLINS_FEATURES_PATH = joinpath(@__DIR__, "..", "datasets", "collins_X20_test.csv")
-COLLINS_LABELS_PATH   = joinpath(@__DIR__, "..", "datasets", "collins_y20_test.csv")
+COLLINS_FEATURES_PATH = joinpath(@__DIR__, "..", "..", "datasets", "collins_X20_test.csv")
+COLLINS_LABELS_PATH   = joinpath(@__DIR__, "..", "..", "datasets", "collins_y20_test.csv")
 
 
 function load_collins_data()
@@ -37,13 +37,18 @@ collins_mse = (y, ŷ) -> sum((ŷ .- y).^2) / size(y, 1)
 
 
 function generate_collins_single(onnx_path, degree)
+    if VeryDiff.APPROX_POLY_THREADS[] > 1
+        BLAS.set_num_threads(1)
+        println("Using ", VeryDiff.APPROX_POLY_THREADS[], " threads for approximation, set BLAS to 1 thread to avoid oversubscription")
+    end
+    
     X_test, y_test = load_collins_data()
     input_bounds = get_input_bounds_collins(X_test)
 
     model = load_onnx_model(onnx_path);
     ŷ, mse, t_eval = evaluate_network(model, X_test, y_test, collins_mse)
 
-    model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, degree, input_bounds=input_bounds, verbosity=1)
+    t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, degree, input_bounds=input_bounds, verbosity=1)
     model_dense = VNNLib.net2dense(model, Dict(k => rand(v...) for (k, v) in model.input_shapes))
     model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes));
 
@@ -51,8 +56,8 @@ function generate_collins_single(onnx_path, degree)
     
     t_verify = @elapsed ϵ = verification_pass(model_poly_dense, model_dense, vec(input_bounds["input"][1]), vec(input_bounds["input"][2]))
 
-    output_file = string(basename(model_path)[1:end-5], "_" , degree, ".json")
-    VeryDiffPolyExperiments.export2json(model_poly, joinpath(@__DIR__, "..", "results", "gelu", "collins", output_file))
+    output_file = string(basename(onnx_path)[1:end-5], "_" , degree, ".json")
+    VeryDiffPolyExperiments.export2json(model_poly, joinpath(@__DIR__, "..", "..", "results", "gelu", "collins", output_file))
 
     println("Summary:")
     println("\tModel: ", basename(onnx_path))
@@ -71,4 +76,12 @@ end
 
 function generate_collins(onnx_path, degrees)
     generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse)
+end
+
+
+function run_collins_experiment(;n_threads=Threads.nthreads())
+    VeryDiff.APPROX_POLY_THREADS[] = n_threads
+    onnx_path = joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx")
+    degrees = 20:20:100
+    generate_collins(onnx_path, degrees)
 end
