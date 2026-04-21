@@ -64,6 +64,7 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
     t_approxs = []
     t_verifies = []
     t_evals = []
+    networks = []
     # stores by reference, so if ϵs is modified, result_dict is also updated when saved
     result_dict = Dict(
             "degrees" => degrees,
@@ -73,6 +74,7 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
             "t_approxs" => t_approxs,
             "t_verifies" => t_verifies,
             "t_evals" => t_evals,
+            "networks" => networks,
             "threads" => Threads.nthreads(),
             "approx_poly_threads" => VeryDiff.APPROX_POLY_THREADS[]
         )
@@ -80,7 +82,7 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         println("Approximating with degree ", d, "...")
         t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, verbosity=1)
         println("Approximation Time: ", t_approx)
-        
+
         model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes))
 
         ŷ_poly, mse_poly, t_eval, ϵ_sample = evaluate_network(model_poly_dense, X_test, y_test, metric; y_pred=ŷ)
@@ -95,6 +97,7 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         push!(t_approxs, t_approx)
         push!(t_verifies, t_verify)
         push!(t_evals, t_eval)
+        push!(networks, model_poly)
 
         # save result dict in every iteration to avoid losing results in case of crashes
         jldsave(logfile; result_dict)
@@ -107,7 +110,7 @@ end
 function warmup(;n_threads=Threads.nthreads())
     VeryDiff.APPROX_POLY_THREADS[] = n_threads
     @info "Running low degree for warm up (precompilation)..."
-    onnx_path = joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx")
+    onnx_path = joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx")
     degrees = [5]
-    generate_collins(onnx_path, degrees)
+    generate_mnist(onnx_path, degrees)
 end
