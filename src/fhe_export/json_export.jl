@@ -16,7 +16,7 @@ function convert_to_list_of_tuples(nn_layers)
     layers = []
     for layer in nn_layers
         if layer isa OXP.ONNXLinear
-            push!(layers, ("linear", layer.dense.weight, layer.dense.bias))
+            push!(layers, ("linear", layer.dense.weight, layer.dense.bias, size(layer.dense.weight)))
         elseif layer isa OXP.ONNXConv
             kernel_size = size(layer.conv.weight)[1:2]
             input_channels = size(layer.conv.weight)[3]
@@ -34,7 +34,7 @@ function convert_to_list_of_tuples(nn_layers)
         elseif layer isa OXP.ONNXFlatten
             push!(layers, ("flatten"))
         elseif layer isa VeryDiff.ONNXChebyshevPoly
-            push!(layers, ("chebyshev", layer.coeffs, layer.l, layer.u))
+            push!(layers, ("chebyshev", layer.coeffs, layer.l, layer.u, size(layer.coeffs)))
         elseif layer isa OXP.ONNXRelu
             push!(layers, ("relu"))
         elseif layer isa OXP.ONNXGelu
