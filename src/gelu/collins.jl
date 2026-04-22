@@ -79,9 +79,8 @@ function generate_collins(onnx_path, degrees)
 end
 
 
-function run_collins_experiment(;n_threads=Threads.nthreads())
+function run_collins_experiment(;degrees=20:20:100, n_threads=Threads.nthreads())
     VeryDiff.APPROX_POLY_THREADS[] = n_threads
     onnx_path = joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx")
-    degrees = 20:20:100
     generate_collins(onnx_path, degrees)
 end
