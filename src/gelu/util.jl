@@ -40,8 +40,11 @@ args:
 - `get_input_bounds`: function that takes `X_test` and returns a dictionary of input bounds for verification
 - `metric`: function that computes the performance metric (e.g., accuracy or MSE)
 
+kwargs:
+- `max_polys_per_layer`: maximum number of polynomials per layer (default: `Inf`)
+
 """
-function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric)
+function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric; max_polys_per_layer=Inf)
     println("Generating polynomial networks for ", onnx_path)
     println("Using ", min(Threads.nthreads(), VeryDiff.APPROX_POLY_THREADS[]), " threads for approximation")
     
@@ -80,7 +83,8 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         )
     for d in degrees
         println("Approximating with degree ", d, "...")
-        t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, verbosity=1)
+        t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, 
+                                                                                 max_polys_per_layer=max_polys_per_layer, verbosity=1)
         println("Approximation Time: ", t_approx)
 
         model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes))

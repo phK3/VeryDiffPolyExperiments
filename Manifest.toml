@@ -2436,7 +2436,7 @@ version = "0.21.72"
 
 [[deps.VeryDiff]]
 deps = ["ArgParse", "Artifacts", "CSV", "CondaPkg", "DataStructures", "DoubleFloats", "GLPK", "Gurobi", "HDF5", "JLD2", "JuMP", "LinearAlgebra", "LoopVectorization", "MaskedArrays", "Optim", "PackageCompiler", "Plots", "PolynomialRoots", "Printf", "PythonCall", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "SymbolicUtils", "ThreadPinning", "ThreadsX", "TimerOutputs", "VNNLib"]
-git-tree-sha1 = "4ca402896413e4a25b577ca055f39630268acf99"
+git-tree-sha1 = "4554b78638151fe5b8e5d404de636175aa376d7a"
 repo-rev = "feat/nn-loader-fhe"
 repo-url = "https://github.com/samysweb/VeryDiff"
 uuid = "46246037-a9ce-44df-b2b1-49d8cf705fcd"

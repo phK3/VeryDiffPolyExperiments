@@ -70,8 +70,8 @@ function generate_mnist_single(onnx_path, degree)
 end
 
 
-function generate_mnist(onnx_path, degrees)
-    generate_networks(onnx_path, degrees, load_mnist_data, get_input_bounds_mnist, mnist_acc_fun)
+function generate_mnist(onnx_path, degrees; max_polys_per_layer=Inf)
+    generate_networks(onnx_path, degrees, load_mnist_data, get_input_bounds_mnist, mnist_acc_fun, max_polys_per_layer=max_polys_per_layer)
 end
 
 function generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
@@ -97,10 +97,11 @@ function run_mnist_experiment(;degrees=20:20:100, n_threads=Threads.nthreads())
         joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx")
     ]
     for onnx_path in onnx_paths
-        generate_mnist(onnx_path, degrees)
+        generate_mnist(onnx_path, degrees, max_polys_per_layer=1)
+        # generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf)
     end
 
-    for onnx_path in onnx_paths
-        generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
-    end
+    #for onnx_path in onnx_paths
+    #    generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
+    #end
 end
