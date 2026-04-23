@@ -81,8 +81,10 @@ end
 
 function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads())
     VeryDiff.APPROX_POLY_THREADS[] = n_threads
-    onnx_path = joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx")
-    onnx_path = joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_gelu_1e-3l1_kernel_size.onnx")
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_gelu_1e-3l1_kernel_size.onnx")
+    ]
     generate_collins(onnx_path, degrees)
 
     for onnx_path in onnx_paths
