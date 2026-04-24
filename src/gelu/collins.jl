@@ -74,13 +74,24 @@ function generate_collins_single(onnx_path, degree)
 end
 
 
-function generate_collins(onnx_path, degrees)
-    generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse)
+function generate_collins(onnx_path, degrees; max_polys_per_layer=Inf)
+    generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse, max_polys_per_layer=max_polys_per_layer)
 end
 
 
-function run_collins_experiment(;degrees=20:20:100, n_threads=Threads.nthreads())
+function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads())
     VeryDiff.APPROX_POLY_THREADS[] = n_threads
-    onnx_path = joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx")
-    generate_collins(onnx_path, degrees)
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_gelu_1e-3l1_kernel_size.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        generate_collins(onnx_path, degrees, max_polys_per_layer=1)
+
+        if contains(onnx_path, "small")
+            # hotfix, because we already generated data for the large model
+            generate_collins(onnx_path, degrees, max_polys_per_layer=Inf)
+        end
+    end
 end
