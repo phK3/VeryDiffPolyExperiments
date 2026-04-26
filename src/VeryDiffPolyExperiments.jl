@@ -2,6 +2,7 @@ module VeryDiffPolyExperiments
 
 using VeryDiff, VNNLib, LinearAlgebra
 using Tar, CodecZlib, JLD2, JSON3, CSV, Dates
+using MLDatasets
 
 import VeryDiff: approximate_polynomial, approximate_polynomial_iterative, approximate_polynomial_abcrown, approximate_polynomial_iterative_sampling,
                  extract_approximation_domain
@@ -29,6 +30,7 @@ include("gelu/util.jl")
 include("gelu/collins.jl")
 include("gelu/nn4sys.jl")
 include("gelu/mnist.jl")
+include("gelu/cifar.jl")
 
 #include("generate_nns/generate_nns.jl")
 #include("generate_nns/generate_nns_mnist.jl")
