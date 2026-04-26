@@ -1,12 +1,121 @@
 import torch
 import torch.nn.functional as F
 
+class LossStrategy:    
+    def identify_successful_attacks(self, X):
+        with torch.no_grad():
+            reference_output = self.reference_model(X)
+            test_output = self.test_model(X)
+            is_same = (torch.argmax(reference_output, dim=1) == torch.argmax(test_output, dim=1))
+            # We consider anything that is nan as successful attack so nan -> !is_same
+            is_same = is_same & ~torch.isnan(reference_output).any(dim=1) & ~torch.isnan(test_output).any(dim=1)
+        return ~is_same  # Return a boolean mask where True indicates a successful attack (models disagree)
+    
+    def set_models(self, reference_model, test_model):
+        raise NotImplementedError("Must be implemented by subclass")
+    
+    def compute_loss(self, X):
+        raise NotImplementedError("Must be implemented by subclass")
+
+class ClassChangeLoss(LossStrategy):
+    def __init__(self):
+        pass
+
+    def set_models(self, reference_model, test_model):
+        self.reference_model = reference_model
+        self.test_model = test_model
+
+    def compute_loss(self, X):
+        reference_output = self.reference_model(X)
+        test_output = self.test_model(X)
+
+        reference_max = torch.argmax(reference_output, dim=1)
+        test_max = torch.argmax(test_output, dim=1)
+
+        # Selector: Models with same prediction
+        with torch.no_grad():
+            is_same = ~self.identify_successful_attacks(X)
+            if not is_same.any():
+                return -torch.inf # No samples to attack, return -inf loss to indicate no gradient should be taken
+
+        reference_2nd_largest = torch.topk(reference_output[is_same], 2).indices[:, 1]
+        test_2nd_largest = torch.topk(test_output[is_same], 2).indices[:, 1]
+
+        # Maximize confidence in reference model
+        reference_loss = (reference_output[is_same].gather(1, reference_max[is_same].unsqueeze(1)) - reference_output[is_same].gather(1, reference_2nd_largest.unsqueeze(1)))
+        # Minimize confidence in test model
+        test_loss = (test_output[is_same].gather(1, test_max[is_same].unsqueeze(1)) - test_output[is_same].gather(1, test_2nd_largest.unsqueeze(1)))
+        loss = (reference_loss + test_loss).mean()
+        return loss
+
+class InternalMaxLoss(LossStrategy):
+    """
+    Loss maximizes internal L1 feature activations for configured test or reference model module.
+    
+    Note: This loss does not directly optimize for model disagreement, but is based on the hypothesis that maximizing internal activations may lead to divergence in model predictions due to the polynomial activation ranges.
+    """
+    def __init__(self, model_module_id: str, target_model: str = "test_model", hook_mode: str = "input"):
+        self.model_module_id = model_module_id
+        assert target_model in ["test_model", "reference_model"], "target_model must be either 'test_model' or 'reference_model'"
+        assert hook_mode in ["input", "output"], "hook_mode must be either 'input' or 'output'"
+        self.hook_mode = hook_mode
+        self.target_model = target_model
+        self.feature_capture = {"features": None}
+    
+    def _resolve_module(self, model, module_id, model_name):
+        modules = dict(model.named_modules())
+        if module_id not in modules:
+            raise ValueError(f"{model_name} module identifier '{module_id}' not found.")
+        return modules[module_id]
+
+    def _to_tensor(self, module_output, model_name, module_id):
+        if isinstance(module_output, torch.Tensor):
+            return module_output
+        if isinstance(module_output, (tuple, list)):
+            for item in module_output:
+                if isinstance(item, torch.Tensor):
+                    return item
+        raise TypeError(
+            f"Output of module '{module_id}' in {model_name} is not a Tensor (or Tensor-containing tuple/list)."
+        )
+    
+    def _input_hook(self, _, input, __):
+        self.feature_capture["features"] = self._to_tensor(input, self.target_model, self.model_module_id)
+
+    def _output_hook(self, _, __, output):
+        self.feature_capture["features"] = self._to_tensor(output, self.target_model, self.model_module_id)
+    
+    def set_models(self, reference_model, test_model):
+        self.reference_model = reference_model
+        self.test_model = test_model
+        self.reference_model.train()
+        self.test_model.train()
+        # Hook model
+        target_model = self.test_model if self.target_model == "test_model" else self.reference_model
+        target_module = self._resolve_module(target_model, self.model_module_id, self.target_model)
+        if self.hook_mode == "input":
+            target_module.register_forward_hook(self._input_hook)
+        else:
+            target_module.register_forward_hook(self._output_hook)
+    
+    def compute_loss(self, X):
+        self.feature_capture["features"] = None  # Clear previous capture
+        self.reference_model(X)
+        self.test_model(X)
+        feat_val = self.feature_capture["features"]
+        if feat_val is None:
+            raise ValueError("Feature capture is empty. Ensure that the hook is properly registered and the forward pass is executed before computing loss.")
+        loss = -feat_val.abs().mean()  # Maximize mean absolute activation
+        return loss
+
+
 class Adversary:
 
     def __init__(self, attacks_iter: int = 100, attack_restarts: int = 20, attack_epsilon: float = 2.0/255.0):
         self.attacks_iter = attacks_iter
         self.attack_restarts = attack_restarts
         self.attack_epsilon = attack_epsilon
+        self.loss_strategy = ClassChangeLoss()
 
     def generate(self, reference_model, test_model, img_tensor):
 
@@ -39,17 +148,12 @@ class Adversary:
         return d_a
 
     def pgd_attack(self, reference_model, test_model, X):
-        # Claude suggestion from *somewhere*??? -> Maybe RobustBench/AutoAttack?
+        self.loss_strategy.set_models(reference_model, test_model)
         delta = self.init_delta(X)
 
         for _ in range(self.attack_restarts):
             cur_in = self.compute_perturbed_input(X, delta)
-            reference_output = reference_model(cur_in)
-            test_output = test_model(cur_in)
-            is_same = (torch.argmax(reference_output, dim=1) == torch.argmax(test_output, dim=1))
-            # We consider anything that is nan as successful attack so nan -> !is_same
-            is_same = is_same & ~torch.isnan(reference_output).any(dim=1) & ~torch.isnan(test_output).any(dim=1)
-            # print(f"Attack restart - Number of same predictions: {is_same.sum().item()}/{X.size(0)}")
+            is_same = ~self.loss_strategy.identify_successful_attacks(cur_in)
             if not is_same.any():
                 break
             # Reset delta with random noise for samples where the models have same prediction
@@ -70,29 +174,13 @@ class Adversary:
                 X_a = X.index_select(0, active)
                 delta_a = delta.index_select(0, active)
 
-                reference_output = reference_model(self.compute_perturbed_input(X_a, delta_a))
-                test_output = test_model(self.compute_perturbed_input(X_a, delta_a))
+                inputs = self.compute_perturbed_input(X_a, delta_a)
+                is_same = ~self.loss_strategy.identify_successful_attacks(inputs)
+                loss = self.loss_strategy.compute_loss(inputs)
+                if loss == -torch.inf:
+                    # print("Loss is -inf, no samples to attack, breaking out of attack loop.")
+                    break
 
-                reference_max = torch.argmax(reference_output, dim=1)
-                test_max = torch.argmax(test_output, dim=1)
-
-                # Selector: Models with same prediction
-                with torch.no_grad():
-                    is_same = (reference_max == test_max)
-                    is_same = is_same & ~torch.isnan(reference_output).any(dim=1) & ~torch.isnan(test_output).any(dim=1)
-                    # We only optimize for the samples where the models have the same prediction
-                    if not is_same.any():
-                        # print("same: All samples successfully attacked, breaking out of attack loop.")
-                        break
-
-                reference_2nd_largest = torch.topk(reference_output[is_same], 2).indices[:, 1]
-                test_2nd_largest = torch.topk(test_output[is_same], 2).indices[:, 1]
-
-                # Maximize confidence in reference model
-                reference_loss = (reference_output[is_same].gather(1, reference_max[is_same].unsqueeze(1)) - reference_output[is_same].gather(1, reference_2nd_largest.unsqueeze(1)))
-                # Minimize confidence in test model
-                test_loss = (test_output[is_same].gather(1, test_max[is_same].unsqueeze(1)) - test_output[is_same].gather(1, test_2nd_largest.unsqueeze(1)))
-                loss = (reference_loss + test_loss).mean()
                 # print("Loss: ", loss)
                 loss.backward()
                 with torch.no_grad():
@@ -171,7 +259,7 @@ class AffineAdversary(Adversary):
     def init_delta(self, X):
         lo, hi = self._bounds(X.device)
         # Uniform random initialisation within bounds, shape (batch, 3)
-        delta = torch.zeros(X.size(0), 3, device=X.device).uniform_(0, 1)
+        delta = torch.zeros(X.size(0), lo.size(0), device=X.device).uniform_(0, 1)
         delta = lo + delta * (hi - lo)
         return delta
 
@@ -194,6 +282,71 @@ class AffineAdversary(Adversary):
 
     def update_delta(self, X, delta, grad):
         lo, hi = self._bounds(delta.device)
+        attack_alpha = 2.5 / self.attacks_iter * (hi - lo) / 2.0  # scale step per dimension
+        d_a = delta - attack_alpha * torch.sign(grad)
+        d_a = torch.max(torch.min(d_a, hi), lo)
+        return d_a
+    
+class NoisyAffineAdversary(Adversary):
+    """
+    Adversary that perturbs images with a combination of rotation, x-shift and y-shift.
+    delta has shape (batch, 3): [theta, tx, ty]
+      - theta: rotation angle in radians, bounded by epsilon_rot
+      - tx:    horizontal translation (fraction of image width), bounded by epsilon_tx
+      - ty:    vertical translation (fraction of image height), bounded by epsilon_ty
+    All three dimensions are differentiable via F.affine_grid / F.grid_sample.
+    """
+
+    def __init__(self, attacks_iter: int = 100, attack_restarts: int = 20,
+                 epsilon_rot: float = 0.1, epsilon_tx: float = 0.05, epsilon_ty: float = 0.05,
+                 epsilon_noise: float = 0.01):
+        # Store individual bounds; use epsilon_rot as the generic attack_epsilon (unused directly)
+        super().__init__(attacks_iter=attacks_iter, attack_restarts=attack_restarts,
+                         attack_epsilon=epsilon_rot)
+        self.epsilon_rot = epsilon_rot
+        self.epsilon_tx = epsilon_tx
+        self.epsilon_ty = epsilon_ty
+        self.epsilon_noise = epsilon_noise
+
+    def _bounds(self, device, X):
+        """Return lower and upper bound tensors of shape (3,) for [theta, tx, ty]."""
+        lo = torch.tensor([-self.epsilon_rot, -self.epsilon_tx, -self.epsilon_ty], device=device)
+        hi = torch.tensor([ self.epsilon_rot,  self.epsilon_tx,  self.epsilon_ty], device=device)
+        # Extend bounds to include noise dimension
+        dim = X.size(1) * X.size(2) * X.size(3) if X.dim() == 4 else X.size(1)
+        lo = torch.cat((lo, torch.full((dim,), -self.epsilon_noise, device=X.device)))
+        hi = torch.cat((hi, torch.full((dim,), self.epsilon_noise, device=X.device)))
+        return lo, hi
+
+    def init_delta(self, X):
+        lo, hi = self._bounds(X.device, X)
+        # Uniform random initialisation within bounds, shape (batch, 3)
+        delta = torch.zeros(X.size(0), lo.size(0), device=X.device).uniform_(0, 1)
+        delta = lo + delta * (hi - lo)
+        return delta
+
+    def _build_affine_mat(self, delta):
+        """Build (batch, 2, 3) affine matrix from delta = [theta, tx, ty]."""
+        theta = delta[:, 0]
+        tx    = delta[:, 1]
+        ty    = delta[:, 2]
+        cos_t = torch.cos(theta)
+        sin_t = torch.sin(theta)
+        # Row-major: [[cos, -sin, tx], [sin, cos, ty]]
+        row1 = torch.stack([cos_t, -sin_t, tx], dim=-1)
+        row2 = torch.stack([sin_t,  cos_t, ty], dim=-1)
+        return torch.stack([row1, row2], dim=1)
+
+    def compute_perturbed_input(self, X, delta):
+        mat  = self._build_affine_mat(delta).to(device=X.device, dtype=X.dtype)
+        grid = F.affine_grid(mat, X.size(), align_corners=False)
+        res = F.grid_sample(X, grid, align_corners=False)
+        noise = delta[:, 3:].view(delta.size(0), 1, 28, 28)  # Reshape to (batch, 1, 28, 28) assuming input images are 28x28
+        res = res + noise.expand_as(res)  # Add noise to each pixel
+        return torch.clamp(res, 0, 1)  # Ensure valid pixel range
+
+    def update_delta(self, X, delta, grad):
+        lo, hi = self._bounds(delta.device, X)
         attack_alpha = 2.5 / self.attacks_iter * (hi - lo) / 2.0  # scale step per dimension
         d_a = delta - attack_alpha * torch.sign(grad)
         d_a = torch.max(torch.min(d_a, hi), lo)
