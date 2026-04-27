@@ -31,6 +31,13 @@ pkg> activate .  # to activate the environment in the current directory
 julia>  # first type backspace to leave the package manager
 ```
 
+To synchronize HDF5 libraries between Julia and Python, you need to run
+```julia
+julia> VeryDiffPolyExperiments.set_hdf5_lib()
+```
+This will ensures `HDF5.jl` uses the same library as `h5py` by creating an entry in `LocalPreferences.toml`.
+You have to *restart* Julia for this to take effect.
+
 Once the environment is set up, we can run the experiments via (set `test_run=true` if you don't want to run all experiments but just a quick test)
 ```julia
 julia> using VeryDiffPolyExperiments

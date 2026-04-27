@@ -172,7 +172,7 @@ def _build_batchnorm(layer, dtype):
 
 
 def _build_chebyshev(layer, dtype):
-    _, flat_coeffs, flat_l, flat_u = layer
+    _, flat_coeffs, flat_l, flat_u, _ = layer
     n_neurons = len(flat_l)
     degree_plus_1 = len(flat_coeffs) // n_neurons
     coeffs = np.array(flat_coeffs, dtype=np.float64).reshape(

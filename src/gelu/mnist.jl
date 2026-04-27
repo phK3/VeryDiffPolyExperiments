@@ -70,8 +70,8 @@ function generate_mnist_single(onnx_path, degree)
 end
 
 
-function generate_mnist(onnx_path, degrees; max_polys_per_layer=Inf)
-    generate_networks(onnx_path, degrees, load_mnist_data, get_input_bounds_mnist, mnist_acc_fun, max_polys_per_layer=max_polys_per_layer)
+function generate_mnist(onnx_path, degrees; max_polys_per_layer=Inf, method=:acrown)
+    generate_networks(onnx_path, degrees, load_mnist_data, get_input_bounds_mnist, mnist_acc_fun, max_polys_per_layer=max_polys_per_layer, method=method)
 end
 
 function generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
@@ -98,10 +98,11 @@ function run_mnist_experiment(;degrees=20:20:100, n_threads=Threads.nthreads())
     ]
     for onnx_path in onnx_paths
         generate_mnist(onnx_path, degrees, max_polys_per_layer=1)
-        # generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf)
+        generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf)
+        generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf, method=:zono)
     end
 
-    #for onnx_path in onnx_paths
-    #    generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
-    #end
+    for onnx_path in onnx_paths
+        generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
+    end
 end

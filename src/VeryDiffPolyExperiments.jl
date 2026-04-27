@@ -2,6 +2,8 @@ module VeryDiffPolyExperiments
 
 using VeryDiff, VNNLib, LinearAlgebra
 using Tar, CodecZlib, JLD2, JSON3, CSV, Dates
+using MLDatasets
+using CondaPkg, Preferences, HDF5
 
 import VeryDiff: approximate_polynomial, approximate_polynomial_iterative, approximate_polynomial_abcrown, approximate_polynomial_iterative_sampling,
                  extract_approximation_domain
@@ -21,14 +23,19 @@ function __init__()
     
 end
 
+include("set_hdf5_lib.jl")
+
 include("utils.jl")
 include("verydiff_patch/patch.jl")
+include("verydiff_legacy/verydiff_legacy.jl")
 include("fhe_export/json_export.jl")
 
 include("gelu/util.jl")
 include("gelu/collins.jl")
 include("gelu/nn4sys.jl")
 include("gelu/mnist.jl")
+include("gelu/cifar.jl")
+include("gelu/cer.jl")
 
 #include("generate_nns/generate_nns.jl")
 #include("generate_nns/generate_nns_mnist.jl")
