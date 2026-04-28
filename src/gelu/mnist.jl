@@ -106,3 +106,16 @@ function run_mnist_experiment(;degrees=20:20:100, n_threads=Threads.nthreads())
         generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
     end
 end
+
+
+function generate_mnist_large_scale(;degree=119)
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x6_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x6_1e4.onnx")
+    ]
+    for onnx_path in onnx_paths
+        generate_mnist(onnx_path, [degree], max_polys_per_layer=Inf)
+    end 
+end

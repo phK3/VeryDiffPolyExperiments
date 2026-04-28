@@ -66,8 +66,8 @@ function generate_nn4sys_single(onnx_path, degree)
 end
 
 
-function generate_nn4sys(onnx_path, degrees)
-    generate_networks(onnx_path, degrees, load_nn4sys_data, get_input_bounds_nn4sys, nn4sys_mae)
+function generate_nn4sys(onnx_path, degrees; max_polys_per_layer=Inf, method=:acrown)
+    generate_networks(onnx_path, degrees, load_nn4sys_data, get_input_bounds_nn4sys, nn4sys_mae, max_polys_per_layer=max_polys_per_layer, method=method)
 end
 
 
@@ -76,4 +76,16 @@ function run_nn4sys_experiment(;n_threads=Threads.nthreads())
     onnx_path = joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_5e-7l1.onnx")
     degrees = 20:20:100
     generate_nn4sys(onnx_path, degrees)
+end
+
+
+function generate_nn4sys_large_scale(;degree=27)
+    # TODO: ReLU networks !!!
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_5e-7l1.onnx")
+        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_deep_5e-7l1.onnx")
+    ]
+    for onnx_path in onnx_paths
+        generate_nn4sys(onnx_path, [degree], max_polys_per_layer=Inf)
+    end 
 end

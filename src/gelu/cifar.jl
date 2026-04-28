@@ -74,3 +74,17 @@ function run_cifar_experiment(;degrees=20:20:160, n_threads=Threads.nthreads())
         generate_cifar(onnx_path, degrees, max_polys_per_layer=Inf)
     end
 end
+
+
+function generate_cifar_large_scale(;degrees=[119, 247])
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "cifar", "best_model_bn_4_0.0001l1.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "cifar", "best_model_bn_8_0.0001l1_no_pad.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "cifar", "models_relu", "best_model_relu_bn_4_0.0001l1.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "cifar", "models_relu", "best_model_relu_bn_8_0.0001l1.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        generate_cifar(onnx_path, degrees, max_polys_per_layer=Inf)
+    end
+end

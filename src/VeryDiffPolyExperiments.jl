@@ -36,6 +36,7 @@ include("gelu/nn4sys.jl")
 include("gelu/mnist.jl")
 include("gelu/cifar.jl")
 include("gelu/cer.jl")
+include("gelu/heloc.jl")
 
 #include("generate_nns/generate_nns.jl")
 #include("generate_nns/generate_nns_mnist.jl")

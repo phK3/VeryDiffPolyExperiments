@@ -91,3 +91,17 @@ function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads()
         generate_collins(onnx_path, degrees, max_polys_per_layer=Inf)
     end
 end
+
+
+function generate_collins_large_scale(;degree=119)
+    onnx_paths = [
+        # joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx"),
+        # joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_1e-3l1_kernel_size.onnx"),
+        # joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_gelu_1e-3l1_kernel_size.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_1e-3l1_kernel_size.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        generate_collins_single(onnx_path, degree)
+    end
+end
