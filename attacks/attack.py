@@ -48,6 +48,36 @@ class ClassChangeLoss(LossStrategy):
         loss = (reference_loss + test_loss).mean()
         return loss
 
+class TargetedInequalityLoss(LossStrategy):
+    def __init__(self, reference_target: int, test_target: int):
+        self.reference_target = reference_target
+        self.test_target = test_target
+    
+    def set_models(self, reference_model, test_model):
+        self.reference_model = reference_model
+        self.test_model = test_model
+    
+    def compute_loss(self, X):
+        reference_output = self.reference_model(X)
+        test_output = self.test_model(X)
+
+        # Maximize confidence in reference target class
+        reference_loss = -reference_output[:, self.reference_target]
+        # Minimize confidence in test target class
+        test_loss = test_output[:, self.test_target]
+        loss = (reference_loss + test_loss).mean()
+        return loss
+
+    def identify_successful_attacks(self, X):
+        # NaN not considered successful attack here, as we are targeting specific classes rather than model disagreement
+        with torch.no_grad():
+            reference_output = self.reference_model(X)
+            test_output = self.test_model(X)
+            is_successful = (torch.argmax(reference_output, dim=1) == self.reference_target) & (torch.argmax(test_output, dim=1) == self.test_target)
+            # and not nan
+            is_successful = is_successful & ~torch.isnan(reference_output).any(dim=1) & ~torch.isnan(test_output).any(dim=1)
+        return is_successful
+
 class InternalMaxLoss(LossStrategy):
     """
     Loss maximizes internal L1 feature activations for configured test or reference model module.
@@ -383,6 +413,26 @@ class VAEAdversary(Adversary):
         attack_alpha = 2.5 * epsilon / self.attacks_iter
         d_a = torch.clamp(delta - attack_alpha * torch.sign(grad), -epsilon, epsilon)
         return d_a
+
+class PureNoiseAdversary(Adversary):
+    """
+    Adversary that optimizes a pure noise perturbation (input image X is ignored) to maximize the loss, with the same bounds and optimization procedure as the standard PGD attack.
+    """
+    def init_delta(self, X):
+        epsilon = self.attack_epsilon
+        delta = torch.zeros_like(X).uniform_(-epsilon, epsilon)
+        return delta
+
+    def compute_perturbed_input(self, X, delta):
+        # Ignore input X, return delta as the adversarial example
+        return torch.clamp(delta, 0, 1)  # Ensure valid pixel range
+    
+    def update_delta(self, X, delta, grad):
+        epsilon = self.attack_epsilon
+        attack_alpha = 2.5 * epsilon / self.attacks_iter
+        d_a = torch.clamp(delta - attack_alpha * torch.sign(grad), -epsilon, epsilon)
+        return torch.clamp(d_a, 0, 1)  # Ensure valid pixel range
+    
 
 def robust_eval(reference_model, test_model, loader, criterion, device, adv):
     reference_model.eval()
