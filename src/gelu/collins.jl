@@ -88,10 +88,6 @@ function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads()
 
     for onnx_path in onnx_paths
         generate_collins(onnx_path, degrees, max_polys_per_layer=1)
-
-        if contains(onnx_path, "small")
-            # hotfix, because we already generated data for the large model
-            generate_collins(onnx_path, degrees, max_polys_per_layer=Inf)
-        end
+        generate_collins(onnx_path, degrees, max_polys_per_layer=Inf)
     end
 end

@@ -42,9 +42,10 @@ args:
 
 kwargs:
 - `max_polys_per_layer`: maximum number of polynomials per layer (default: `Inf`)
+- `method`: approximation method to use, either `:acrown` or `:zono` (default: `:acrown`)
 
 """
-function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric; max_polys_per_layer=Inf)
+function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric; max_polys_per_layer=Inf, method=:acrown)
     println("Generating polynomial networks for ", onnx_path)
     println("Using ", min(Threads.nthreads(), VeryDiff.APPROX_POLY_THREADS[]), " threads for approximation")
     
@@ -83,11 +84,17 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         )
     for d in degrees
         println("Approximating with degree ", d, "...")
-        t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, 
-                                                                                 max_polys_per_layer=max_polys_per_layer, verbosity=1)
+        if method == :acrown
+            t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, 
+                                                                                    max_polys_per_layer=max_polys_per_layer, verbosity=1)
+            model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes))
+        elseif method == :zono
+            t_approx = @elapsed model_poly_dense = approximate_polynomial_iterative_zono(model_dense, vec(input_bounds["input"][1]), vec(input_bounds["input"][2]), d,
+                                                                                   max_polys_per_layer=max_polys_per_layer, verbosity=1)
+        else
+            error("Unsupported approximation method: ", method)
+        end
         println("Approximation Time: ", t_approx)
-
-        model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes))
 
         ŷ_poly, mse_poly, t_eval, ϵ_sample = evaluate_network(model_poly_dense, X_test, y_test, metric; y_pred=ŷ)
         println("Polynomial acc/MSE: ", mse_poly)
@@ -101,7 +108,12 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         push!(t_approxs, t_approx)
         push!(t_verifies, t_verify)
         push!(t_evals, t_eval)
-        push!(networks, model_poly)
+
+        if method == :acrown
+            push!(networks, model_poly)
+        elseif method == :zono
+            push!(networks, model_poly_dense)
+        end
 
         # save result dict in every iteration to avoid losing results in case of crashes
         jldsave(logfile; result_dict)
