@@ -83,12 +83,19 @@ function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads()
     VeryDiff.APPROX_POLY_THREADS[] = n_threads
     onnx_paths = [
         joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx"),
-        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_gelu_1e-3l1_kernel_size.onnx")
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_1e-3l1_kernel_size.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_gelu_1e-3l1_kernel_size.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_1e-3l1_kernel_size.onnx")
     ]
 
     for onnx_path in onnx_paths
-        generate_collins(onnx_path, degrees, max_polys_per_layer=1)
-        generate_collins(onnx_path, degrees, max_polys_per_layer=Inf)
+        generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf, method=:zono)
+
+        # because we already ran that
+        if !contains(onnx_path, "gelu")
+            generate_collins(onnx_path, degrees, max_polys_per_layer=1)
+            generate_collins(onnx_path, degrees, max_polys_per_layer=Inf)
+        end
     end
 end
 
