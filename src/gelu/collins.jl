@@ -74,8 +74,8 @@ function generate_collins_single(onnx_path, degree)
 end
 
 
-function generate_collins(onnx_path, degrees; max_polys_per_layer=Inf)
-    generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse, max_polys_per_layer=max_polys_per_layer)
+function generate_collins(onnx_path, degrees; max_polys_per_layer=Inf, method=:acrown)
+    generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse, max_polys_per_layer=max_polys_per_layer, method=method)
 end
 
 
@@ -89,7 +89,7 @@ function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads()
     ]
 
     for onnx_path in onnx_paths
-        generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf, method=:zono)
+        generate_collins(onnx_path, degrees, max_polys_per_layer=Inf, method=:zono)
 
         # because we already ran that
         if !contains(onnx_path, "gelu")
