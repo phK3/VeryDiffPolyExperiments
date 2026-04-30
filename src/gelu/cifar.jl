@@ -63,6 +63,22 @@ function generate_cifar(onnx_path, degrees; max_polys_per_layer=Inf)
 end
 
 
+function generate_cifar_sampling(onnx_path, degrees; widen_factor=2.)
+    model = load_onnx_model(onnx_path)
+    X_test, y_test = load_cifar_data()
+
+    sampled_networks = []
+    for d in degrees
+        println("Approximating with degree ", d, " (sampling) ...")
+        nn_sampled = VeryDiff.approximate_polynomial_iterative_sampling(model, X_test, d, widen_factor=widen_factor, verbosity=1, max_polys_per_layer=Inf)
+        push!(sampled_networks, nn_sampled)
+    end
+
+    logfile = string(basename(onnx_path)[1:end-5], "_sampling_" , now(), ".jld2")
+    jldsave(logfile; sampled_networks) 
+end
+
+
 function run_cifar_experiment(;degrees=20:20:160, n_threads=Threads.nthreads())
     VeryDiff.APPROX_POLY_THREADS[] = n_threads
     onnx_paths = [
