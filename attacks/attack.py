@@ -91,6 +91,13 @@ class InternalMaxLoss(LossStrategy):
         self.hook_mode = hook_mode
         self.target_model = target_model
         self.feature_capture = {"features": None}
+
+    def identify_successful_attacks(self, X):
+        with torch.no_grad():
+            reference_output = self.reference_model(X)
+            test_output = self.test_model(X)
+            res = torch.isnan(reference_output).any(dim=1) | torch.isnan(test_output).any(dim=1)
+        return res  # Return a boolean mask where True indicates a successful attack (models disagree)
     
     def _resolve_module(self, model, module_id, model_name):
         modules = dict(model.named_modules())
@@ -329,7 +336,7 @@ class NoisyAffineAdversary(Adversary):
 
     def __init__(self, attacks_iter: int = 100, attack_restarts: int = 20,
                  epsilon_rot: float = 0.1, epsilon_tx: float = 0.05, epsilon_ty: float = 0.05,
-                 epsilon_noise: float = 0.01):
+                 epsilon_noise: float = 0.01, noise_shape=(1, 28, 28), rotation_scale: bool = False):
         # Store individual bounds; use epsilon_rot as the generic attack_epsilon (unused directly)
         super().__init__(attacks_iter=attacks_iter, attack_restarts=attack_restarts,
                          attack_epsilon=epsilon_rot)
@@ -337,13 +344,15 @@ class NoisyAffineAdversary(Adversary):
         self.epsilon_tx = epsilon_tx
         self.epsilon_ty = epsilon_ty
         self.epsilon_noise = epsilon_noise
+        self.noise_shape = noise_shape
+        self.rotation_scale = rotation_scale
 
     def _bounds(self, device, X):
         """Return lower and upper bound tensors of shape (3,) for [theta, tx, ty]."""
         lo = torch.tensor([-self.epsilon_rot, -self.epsilon_tx, -self.epsilon_ty], device=device)
         hi = torch.tensor([ self.epsilon_rot,  self.epsilon_tx,  self.epsilon_ty], device=device)
         # Extend bounds to include noise dimension
-        dim = X.size(1) * X.size(2) * X.size(3) if X.dim() == 4 else X.size(1)
+        dim = self.noise_shape[0] * self.noise_shape[1] * self.noise_shape[2] if len(self.noise_shape) == 3 else (self.noise_shape[0] * self.noise_shape[1] if len(self.noise_shape) == 2 else self.noise_shape[0])
         lo = torch.cat((lo, torch.full((dim,), -self.epsilon_noise, device=X.device)))
         hi = torch.cat((hi, torch.full((dim,), self.epsilon_noise, device=X.device)))
         return lo, hi
@@ -362,16 +371,25 @@ class NoisyAffineAdversary(Adversary):
         ty    = delta[:, 2]
         cos_t = torch.cos(theta)
         sin_t = torch.sin(theta)
+        if self.rotation_scale:
+            W = self.noise_shape[1]
+            H = self.noise_shape[2]
+            scale = torch.min(
+                W / (W * abs(cos_t) + H*abs(sin_t)),
+                H / (W * abs(cos_t) + H*abs(sin_t))
+            )
+        else:
+            scale = 1.0
         # Row-major: [[cos, -sin, tx], [sin, cos, ty]]
-        row1 = torch.stack([cos_t, -sin_t, tx], dim=-1)
-        row2 = torch.stack([sin_t,  cos_t, ty], dim=-1)
+        row1 = torch.stack([scale*cos_t, -scale*sin_t, tx], dim=-1)
+        row2 = torch.stack([scale*sin_t,  scale*cos_t, ty], dim=-1)
         return torch.stack([row1, row2], dim=1)
 
     def compute_perturbed_input(self, X, delta):
         mat  = self._build_affine_mat(delta).to(device=X.device, dtype=X.dtype)
         grid = F.affine_grid(mat, X.size(), align_corners=False)
         res = F.grid_sample(X, grid, align_corners=False)
-        noise = delta[:, 3:].view(delta.size(0), 1, 28, 28)  # Reshape to (batch, 1, 28, 28) assuming input images are 28x28
+        noise = delta[:, 3:].view(delta.size(0), *self.noise_shape)  # Reshape to the specified noise shape
         res = res + noise.expand_as(res)  # Add noise to each pixel
         return torch.clamp(res, 0, 1)  # Ensure valid pixel range
 

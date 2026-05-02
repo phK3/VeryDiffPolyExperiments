@@ -57,16 +57,24 @@ class ChebyshevPoly(nn.Module):
     l, u:   (n_neurons,)  — per-neuron input bounds for normalisation.
     """
 
-    def __init__(self, coeffs, l, u, dtype):
+    def __init__(self, coeffs, l, u, dtype, oob_nan=False):
         super().__init__()
         self.register_buffer('coeffs', torch.tensor(coeffs, dtype=dtype))
         self.register_buffer('l',      torch.tensor(l,      dtype=dtype))
         self.register_buffer('u',      torch.tensor(u,      dtype=dtype))
+        self.oob_nan = oob_nan
 
     def forward(self, x):
         original_shape = x.shape
         # Flatten to (batch, n_neurons)
         x_flat = x.reshape(original_shape[0], -1)
+        if self.oob_nan:
+            # Set out-of-bounds inputs to NaN to avoid extrapolation artifacts
+            x_flat = torch.where(
+                (x_flat < self.l) | (x_flat > self.u),
+                torch.tensor(float('nan'), dtype=x.dtype, device=x.device),
+                x_flat
+            )
 
         l = self.l
         u = self.u
@@ -171,7 +179,7 @@ def _build_batchnorm(layer, dtype):
     return FrozenBatchNorm(flat_gamma, flat_beta, flat_mu, flat_var, eps, dtype)
 
 
-def _build_chebyshev(layer, dtype):
+def _build_chebyshev(layer, dtype, oob_nan=False):
     _, flat_coeffs, flat_l, flat_u, _ = layer
     n_neurons = len(flat_l)
     degree_plus_1 = len(flat_coeffs) // n_neurons
@@ -180,7 +188,7 @@ def _build_chebyshev(layer, dtype):
     )
     l = np.array(flat_l, dtype=np.float64)
     u = np.array(flat_u, dtype=np.float64)
-    return ChebyshevPoly(coeffs, l, u, dtype)
+    return ChebyshevPoly(coeffs, l, u, dtype, oob_nan=oob_nan)
 
 
 def _build_reshape(layer, dtype):
@@ -193,7 +201,7 @@ def _build_reshape(layer, dtype):
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def json_to_pytorch(path: str, double_precision: bool = False) -> nn.Module:
+def json_to_pytorch(path: str, double_precision: bool = False, oob_nan: bool = False) -> nn.Module:
     """
     Load a JSON-serialized neural network and return an nn.Sequential module.
 
@@ -230,7 +238,7 @@ def json_to_pytorch(path: str, double_precision: bool = False) -> nn.Module:
         elif tag == 'reshape':
             modules.append(_build_reshape(layer, dtype))
         elif tag == 'chebyshev':
-            modules.append(_build_chebyshev(layer, dtype))
+            modules.append(_build_chebyshev(layer, dtype, oob_nan=oob_nan))
         else:
             raise ValueError(f"Unknown layer type: {tag!r}")
 
