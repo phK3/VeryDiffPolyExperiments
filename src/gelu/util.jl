@@ -125,6 +125,18 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
 end
 
 
+function sample_output_ranges(onnx_path, load_data, metric)
+    println("Computing output ranges for ", basename(onnx_path))
+
+    X_test, y_test = load_data()
+    model = load_onnx_model(onnx_path)
+
+    ŷ, mse, t_eval = evaluate_network(model, X_test, y_test, metric)
+
+    println("\toutput in [", minimum(ŷ), ", ", maximum(ŷ), "]")
+end
+
+
 function warmup(;n_threads=Threads.nthreads())
     VeryDiff.APPROX_POLY_THREADS[] = n_threads
     @info "Running low degree for warm up (precompilation)..."

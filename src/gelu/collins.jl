@@ -115,3 +115,17 @@ function generate_collins_large_scale(;degree=119)
         generate_collins_single(onnx_path, degree)
     end
 end
+
+
+function sample_collins_output_ranges()
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_1e-3l1_kernel_size.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_gelu_1e-3l1_kernel_size.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_window_20_1e-3l1_kernel_size.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        sample_output_ranges(onnx_path, load_collins_data, collins_mse)
+    end
+end
