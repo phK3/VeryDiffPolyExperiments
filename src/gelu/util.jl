@@ -45,7 +45,7 @@ kwargs:
 - `method`: approximation method to use, either `:acrown` or `:zono` (default: `:acrown`)
 
 """
-function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric; max_polys_per_layer=Inf, method=:acrown)
+function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric; max_polys_per_layer=Inf, method=:acrown, tol=1e-10)
     println("Generating polynomial networks for ", onnx_path)
     println("Using ", min(Threads.nthreads(), VeryDiff.APPROX_POLY_THREADS[]), " threads for approximation")
     
@@ -80,17 +80,19 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
             "t_evals" => t_evals,
             "networks" => networks,
             "threads" => Threads.nthreads(),
-            "approx_poly_threads" => VeryDiff.APPROX_POLY_THREADS[]
+            "approx_poly_threads" => VeryDiff.APPROX_POLY_THREADS[],
+            "max_polys_per_layer" => max_polys_per_layer,
+            "method" => method
         )
     for d in degrees
         println("Approximating with degree ", d, "...")
         if method == :acrown
             t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, 
-                                                                                    max_polys_per_layer=max_polys_per_layer, verbosity=1)
+                                                                                    max_polys_per_layer=max_polys_per_layer, verbosity=1, tol=tol)
             model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes))
         elseif method == :zono
             t_approx = @elapsed model_poly_dense = approximate_polynomial_iterative_zono(model_dense, vec(input_bounds["input"][1]), vec(input_bounds["input"][2]), d,
-                                                                                   max_polys_per_layer=max_polys_per_layer, verbosity=1)
+                                                                                   max_polys_per_layer=max_polys_per_layer, verbosity=1, tol=tol)
         else
             error("Unsupported approximation method: ", method)
         end

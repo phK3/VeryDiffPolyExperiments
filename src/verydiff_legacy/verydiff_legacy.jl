@@ -78,7 +78,7 @@ kwargs:
     max_iter - maximum number of iterations for Remez algorithm
     max_polys_per_layer - maximum number of different polynomials to use per layer
 """
-function approximate_polynomial_iterative_zono(model::OnnxNet, input_lb::AbstractVector, input_ub::AbstractVector, degree::Integer; verbosity=0, cheby=true, max_iter=20, max_polys_per_layer=Inf)
+function approximate_polynomial_iterative_zono(model::OnnxNet, input_lb::AbstractVector, input_ub::AbstractVector, degree::Integer; verbosity=0, tol=1e-10, cheby=true, max_iter=20, max_polys_per_layer=Inf)
     @assert (max_polys_per_layer == Inf) || (max_polys_per_layer == 1) "only max_polys_per_layer=1 (one polynomial for all neurons) or Inf (one polynomial for each neuron) supported currently"
 
     input_center = 0.5 .* (input_lb .+ input_ub)
@@ -99,7 +99,7 @@ function approximate_polynomial_iterative_zono(model::OnnxNet, input_lb::Abstrac
         !all(isfinite.(bounds_layer)) && println("lb non-finite: ", (1:size(bounds_layer,1))[.~isfinite.(bounds_layer[:,1])])
         !all(isfinite.(bounds_layer)) && println("ub non-finite: ", (1:size(bounds_layer,1))[.~isfinite.(bounds_layer[:,2])])
 
-        layer_poly, ϵs = VeryDiff.approximate_polynomial(l.node, bounds_layer, degree, cheby=cheby, verbosity=verbosity, max_iter=max_iter, max_polys_per_layer=max_polys_per_layer)
+        layer_poly, ϵs = VeryDiff.approximate_polynomial(l.node, bounds_layer, degree, cheby=cheby, verbosity=verbosity, max_iter=max_iter, max_polys_per_layer=max_polys_per_layer, tol=tol)
         push!(layers_poly, layer_poly)
 
         ẑ = propagate_legacy(layer_poly, ẑ)
