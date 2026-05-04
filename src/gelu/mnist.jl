@@ -75,18 +75,8 @@ function generate_mnist(onnx_path, degrees; max_polys_per_layer=Inf, method=:acr
 end
 
 function generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
-    model = load_onnx_model(onnx_path)
-    X_test, y_test = load_mnist_data()
-
-    sampled_networks = []
-    for d in degrees
-        println("Approximating with degree ", d, " (sampling) ...")
-        nn_sampled = VeryDiff.approximate_polynomial_iterative_sampling(model, X_test, d, widen_factor=widen_factor, verbosity=1, max_polys_per_layer=Inf)
-        push!(sampled_networks, nn_sampled)
-    end
-
-    logfile = string(basename(onnx_path)[1:end-5], "_sampling_" , now(), ".jld2")
-    jldsave(logfile; sampled_networks) 
+    generate_networks(onnx_path, degrees, load_mnist_data, get_input_bounds_mnist, mnist_acc_fun, max_polys_per_layer=Inf, 
+                      method=:sampling, widen_factor=widen_factor, logfile_infix="sampling")
 end
 
 
@@ -96,11 +86,11 @@ function run_mnist_experiment(;degrees=20:20:100, n_threads=Threads.nthreads())
         joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx")
         joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx")
     ]
-    for onnx_path in onnx_paths
-        generate_mnist(onnx_path, degrees, max_polys_per_layer=1)
-        generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf)
-        generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf, method=:zono)
-    end
+    #for onnx_path in onnx_paths
+    #    generate_mnist(onnx_path, degrees, max_polys_per_layer=1)
+    #    generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf)
+    #    generate_mnist(onnx_path, degrees, max_polys_per_layer=Inf, method=:zono)
+    #end
 
     for onnx_path in onnx_paths
         generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
@@ -110,12 +100,26 @@ end
 
 function generate_mnist_large_scale(;degree=119)
     onnx_paths = [
-        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx"),
-        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx"),
+        #joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx"),
+        #joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx"),
         joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x6_1e4.onnx"),
         joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x6_1e4.onnx")
     ]
     for onnx_path in onnx_paths
         generate_mnist(onnx_path, [degree], max_polys_per_layer=Inf)
     end 
+end
+
+
+function sample_mnist_output_ranges()
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x6_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x6_1e4.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        sample_output_ranges(onnx_path, load_mnist_data, mnist_acc_fun)
+    end
 end

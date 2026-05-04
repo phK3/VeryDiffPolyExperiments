@@ -42,14 +42,16 @@ args:
 
 kwargs:
 - `max_polys_per_layer`: maximum number of polynomials per layer (default: `Inf`)
-- `method`: approximation method to use, either `:acrown` or `:zono` (default: `:acrown`)
+- `method`: approximation method to use, either `:acrown`, `:zono` or `:sampling` (default: `:acrown`)
+- `widen_factor`: if approximation by sampling, width of bounds will be widened by this factor (default: 2)
 
 """
-function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric; max_polys_per_layer=Inf, method=:acrown, tol=1e-10)
+function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric; max_polys_per_layer=Inf, method=:acrown, 
+                           widen_factor=2, tol=1e-10, logfile_infix="")
     println("Generating polynomial networks for ", onnx_path)
     println("Using ", min(Threads.nthreads(), VeryDiff.APPROX_POLY_THREADS[]), " threads for approximation")
     
-    logfile = string(basename(onnx_path)[1:end-5], "_results_", now(), ".jld2")
+    logfile = length(logfile_infix) > 0 ? string(basename(onnx_path)[1:end-5], "_", logfile_infix, "_results_", now(), ".jld2") : string(basename(onnx_path)[1:end-5], "_results_", now(), ".jld2")
     println("Logging results to ", logfile)
 
     X_test, y_test = load_data()
@@ -93,6 +95,10 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         elseif method == :zono
             t_approx = @elapsed model_poly_dense = approximate_polynomial_iterative_zono(model_dense, vec(input_bounds["input"][1]), vec(input_bounds["input"][2]), d,
                                                                                    max_polys_per_layer=max_polys_per_layer, verbosity=1, tol=tol)
+        elseif method == :sampling
+            t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_iterative_sampling(model, X_test, d, widen_factor=widen_factor, verbosity=1, 
+                                                                                    max_polys_per_layer=max_polys_per_layer, tol=tol)
+            model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes))                                                                       
         else
             error("Unsupported approximation method: ", method)
         end
@@ -101,8 +107,14 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         ŷ_poly, mse_poly, t_eval, ϵ_sample = evaluate_network(model_poly_dense, X_test, y_test, metric; y_pred=ŷ)
         println("Polynomial acc/MSE: ", mse_poly)
 
-        t_verify = @elapsed ϵ = verification_pass(model_poly_dense, model_dense, vec(input_bounds["input"][1]), vec(input_bounds["input"][2]))
-        println("Verified Error Bound: ", ϵ)
+        if method != :sampling
+            t_verify = @elapsed ϵ = verification_pass(model_poly_dense, model_dense, vec(input_bounds["input"][1]), vec(input_bounds["input"][2]))
+            println("Verified Error Bound: ", ϵ)
+        else 
+            t_verify = 0. 
+            ϵ = -1.
+            println("sampled networ -- skipping verification")
+        end
 
         push!(ϵs, ϵ)
         push!(ϵ_samples, ϵ_sample)
@@ -111,7 +123,7 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         push!(t_verifies, t_verify)
         push!(t_evals, t_eval)
 
-        if method == :acrown
+        if (method == :acrown) || (method == :sampling)
             push!(networks, model_poly)
         elseif method == :zono
             push!(networks, model_poly_dense)
@@ -122,6 +134,18 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
 
         println("Degree: ", d, " ϵ: ", ϵ, ", ϵ_sample: ", ϵ_sample, ", acc/mse (poly): ", mse_poly, ", t_approx: ", t_approx, " t_verify: ", t_verify, " t_eval: ", t_eval)
     end
+end
+
+
+function sample_output_ranges(onnx_path, load_data, metric)
+    println("Computing output ranges for ", basename(onnx_path))
+
+    X_test, y_test = load_data()
+    model = load_onnx_model(onnx_path)
+
+    ŷ, mse, t_eval = evaluate_network(model, X_test, y_test, metric)
+
+    println("\toutput in [", minimum(ŷ), ", ", maximum(ŷ), "]")
 end
 
 
