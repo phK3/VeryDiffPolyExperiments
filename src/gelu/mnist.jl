@@ -110,12 +110,26 @@ end
 
 function generate_mnist_large_scale(;degree=119)
     onnx_paths = [
-        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx"),
-        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx"),
+        #joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx"),
+        #joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx"),
         joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x6_1e4.onnx"),
         joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x6_1e4.onnx")
     ]
     for onnx_path in onnx_paths
         generate_mnist(onnx_path, [degree], max_polys_per_layer=Inf)
     end 
+end
+
+
+function sample_mnist_output_ranges()
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x4_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x6_1e4.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_gelu_256x6_1e4.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        sample_output_ranges(onnx_path, load_mnist_data, mnist_acc_fun)
+    end
 end

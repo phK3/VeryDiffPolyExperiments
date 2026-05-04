@@ -104,3 +104,17 @@ function generate_cifar_large_scale(;degrees=[119, 247])
         generate_cifar(onnx_path, degrees, max_polys_per_layer=Inf)
     end
 end
+
+
+function sample_cifar_output_ranges()
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "cifar", "best_model_bn_4_0.0001l1.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "cifar", "best_model_bn_8_0.0001l1_no_pad.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "cifar", "models_relu", "best_model_relu_bn_4_0.0001l1_new.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "cifar", "models_relu", "best_model_relu_bn_8_0.0001l1_new.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        sample_output_ranges(onnx_path, load_cifar_data, cifar_acc)
+    end
+end

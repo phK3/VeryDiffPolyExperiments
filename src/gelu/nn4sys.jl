@@ -89,3 +89,15 @@ function generate_nn4sys_large_scale(;degree=27)
         generate_nn4sys(onnx_path, [degree], max_polys_per_layer=Inf)
     end 
 end
+
+
+function sample_nn4sys_output_ranges()
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_5e-7l1.onnx")
+        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_deep_5e-7l1.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        sample_output_ranges(onnx_path, load_nn4sys_data, nn4sys_mae)
+    end
+end

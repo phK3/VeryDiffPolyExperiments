@@ -122,3 +122,15 @@ function generate_heloc_large_scale(;degree=27)
         generate_heloc(onnx_path, [degree], max_polys_per_layer=Inf)
     end 
 end
+
+
+function sample_heloc_output_ranges()
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "heloc", "heloc_2e5.onnx")
+        joinpath(@__DIR__, "..", "..", "networks", "heloc", "heloc_2e5_gelu.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        sample_output_ranges(onnx_path, load_heloc_data, acc_fun_binary)
+    end
+end

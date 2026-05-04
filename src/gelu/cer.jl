@@ -99,3 +99,14 @@ function generate_cer_large_scale(;degree=27)
         generate_cer(onnx_path, [degree], max_polys_per_layer=Inf)
     end 
 end
+
+function sample_cer_output_ranges()
+    onnx_paths = [
+        joinpath(@__DIR__, "..", "..", "networks", "cer", "cer_nusr10_GeLU_arch1x64_val4.06e-01.onnx"),
+        joinpath(@__DIR__, "..", "..", "networks", "cer", "cer_nusr10_ReLU_arch1x64_val4.30e-01.onnx")
+    ]
+
+    for onnx_path in onnx_paths
+        sample_output_ranges(onnx_path, load_cer_data, cer_mse)
+    end
+end
