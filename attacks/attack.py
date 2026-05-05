@@ -399,6 +399,94 @@ class NoisyAffineAdversary(Adversary):
         d_a = delta - attack_alpha * torch.sign(grad)
         d_a = torch.max(torch.min(d_a, hi), lo)
         return d_a
+    
+import torch
+
+SPECIAL_VALUES = {-9.0, -8.0, -7.0}
+
+
+class HELOCAdversary(Adversary):
+    """
+    Adversary for HELOC tabular integer data.
+
+    Args:
+        feature_config: dict mapping feature_name -> {"min": float, "max": float, ...}
+                        Features absent from this dict are treated as frozen.
+        frozen_features: set of feature names to never perturb.
+        epsilon_frac:   max perturbation as a fraction of each feature's range.
+    """
+
+    def __init__(self, feature_names: list[str], feature_config: dict,
+                 frozen_features: set[str],
+                 attacks_iter: int = 100, attack_restarts: int = 20,
+                 epsilon_frac: float = 0.1, range_spec = "minmax", min_one_eps=True):
+        super().__init__(attacks_iter=attacks_iter, attack_restarts=attack_restarts,
+                         attack_epsilon=epsilon_frac)
+        self.epsilon_frac = epsilon_frac
+        self.feature_names = feature_names
+
+        if range_spec == "minmax":
+            ranges   = torch.tensor([feature_config[f]["max"] - feature_config[f]["min"] for f in feature_names], dtype=torch.float32)
+        elif range_spec == "iqr":
+            ranges   = torch.tensor([feature_config[f]["q3"] - feature_config[f]["q1"] for f in feature_names], dtype=torch.float32)
+        else:
+            raise ValueError(f"Unknown range spec {range_spec}")
+        feat_min = torch.tensor([feature_config[f]["min"] for f in feature_names], dtype=torch.float32)
+        feat_max = torch.tensor([feature_config[f]["max"] for f in feature_names], dtype=torch.float32)
+        frozen   = torch.tensor([f in frozen_features for f in feature_names], dtype=torch.bool)
+
+        delta_bound = epsilon_frac * ranges
+        if min_one_eps:
+            delta_bound = torch.clamp(delta_bound , min=1.0)
+        delta_bound[frozen] = 0.0
+
+        self.delta_lo    = -delta_bound
+        self.delta_hi    =  delta_bound
+        self.feature_min = feat_min
+        self.feature_max = feat_max
+        self.frozen_mask = frozen
+
+    def generate(self, reference_model, test_model, img_tensor):
+
+        attack = self.pgd_attack(reference_model, test_model, img_tensor)
+
+        adv = self.compute_perturbed_input(img_tensor, attack)
+
+        orig_class = torch.argmax(reference_model(adv), dim=1)
+
+        adv_class = torch.argmax(test_model(adv), dim=1)
+
+        return adv.detach(), orig_class, adv_class
+
+    def _special_mask(self, X: torch.Tensor) -> torch.Tensor:
+        mask = torch.zeros_like(X, dtype=torch.bool)
+        for v in SPECIAL_VALUES:
+            mask |= (X == v)
+        return mask
+
+    def _bounds(self, device):
+        return self.delta_lo.to(device), self.delta_hi.to(device)
+
+    def init_delta(self, X: torch.Tensor) -> torch.Tensor:
+        lo, hi = self._bounds(X.device)
+        delta = lo + torch.rand_like(X) * (hi - lo)
+        delta[self._special_mask(X)] = 0.0
+        return delta
+
+    def compute_perturbed_input(self, X: torch.Tensor, delta: torch.Tensor) -> torch.Tensor:
+        x_ste = X + delta
+        x_ste = x_ste + (torch.round(x_ste) - x_ste).detach()  # STE rounding
+        x_ste = torch.clamp(x_ste, self.feature_min.to(X.device), self.feature_max.to(X.device))
+
+        no_perturb = self._special_mask(X) | self.frozen_mask.to(X.device).unsqueeze(0)
+        return torch.where(no_perturb, X, x_ste)
+
+    def update_delta(self, X: torch.Tensor, delta: torch.Tensor, grad: torch.Tensor) -> torch.Tensor:
+        lo, hi = self._bounds(delta.device)
+        alpha = 2.5 / self.attacks_iter * (hi - lo) / 2.0
+        d_new = torch.clamp(delta - alpha * torch.sign(grad), lo, hi)
+        d_new[self._special_mask(X)] = 0.0
+        return d_new
 
 class VAEAdversary(Adversary):
     """

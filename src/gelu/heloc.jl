@@ -16,12 +16,15 @@ function acc_fun_binary(ŷ::AbstractArray, y::AbstractArray{<:Number})
 end
 
 
-function load_heloc_data()
+function load_heloc_data(;limited_data=false)
     data_min = -9 .* ones(23)
     # different upper bounds than for Zonopoly??? But just took max of data in f_heloc.
     data_max = [93, 803, 383, 383, 79, 19, 19, 100, 83, 9, 8, 104, 19, 100, 24, 66, 66, 232, 471, 32, 23, 18, 100];
 
     f_heloc = CSV.File(HELOC_DATA_PATH)
+    if limited_data
+        f_heloc = f_heloc[1:5000]
+    end
     X_test = [Float64.([x for x in f_heloc[i]][2:end]) for i in 1:size(f_heloc, 1)]
     X_test = [(x .- data_min) ./ (data_max .- data_min) for x in X_test]
     y_test = [[x for x in f_heloc[i]][1] for i in 1:size(f_heloc, 1)]
@@ -79,9 +82,9 @@ function generate_heloc(onnx_path, degrees; max_polys_per_layer=Inf, method=:acr
     generate_networks(onnx_path, degrees, load_heloc_data, get_input_bounds_heloc, acc_fun_binary, max_polys_per_layer=max_polys_per_layer, method=method)
 end
 
-function generate_heloc_sampling(onnx_path, degrees; widen_factor=2.)
+function generate_heloc_sampling(onnx_path, degrees; widen_factor=2., limited_data=false)
     model = load_onnx_model(onnx_path)
-    X_test, y_test = load_heloc_data()
+    X_test, y_test = load_heloc_data(;limited_data=limited_data)
 
     sampled_networks = []
     for d in degrees
