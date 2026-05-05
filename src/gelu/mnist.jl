@@ -93,7 +93,8 @@ function run_mnist_experiment(;degrees=20:20:100, n_threads=Threads.nthreads())
     #end
 
     for onnx_path in onnx_paths
-        generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
+        generate_mnist_sampling(onnx_path, degrees, widen_factor=2., max_polys_per_layer=1)
+        # generate_mnist_sampling(onnx_path, degrees; widen_factor=2.)
     end
 end
 
