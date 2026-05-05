@@ -79,6 +79,12 @@ function generate_collins(onnx_path, degrees; max_polys_per_layer=Inf, method=:a
 end
 
 
+function generate_collins_sampling(onnx_path, degrees; widen_factor=2., max_polys_per_layer=Inf,)
+    generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse, max_polys_per_layer=max_polys_per_layer, 
+                      method=:sampling, widen_factor=widen_factor, logfile_infix="sampling")
+end
+
+
 function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads(), tol=1e-9)
     VeryDiff.APPROX_POLY_THREADS[] = n_threads
     onnx_paths = [
@@ -89,16 +95,12 @@ function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads()
     ]
 
     for onnx_path in onnx_paths
-        if !contains(basename(onnx_path), "small") 
-            # already have results for small ones
-            generate_collins(onnx_path, degrees, max_polys_per_layer=Inf, method=:zono, tol=tol)
-        end
-
-        # because we already ran that
-        if !contains(basename(onnx_path), "gelu")
-            generate_collins(onnx_path, degrees, max_polys_per_layer=1, tol=tol)
-            generate_collins(onnx_path, degrees, max_polys_per_layer=Inf, tol=tol)
-        end
+        #generate_collins(onnx_path, degrees, max_polys_per_layer=Inf, method=:zono, tol=tol)
+        
+        #generate_collins(onnx_path, degrees, max_polys_per_layer=1, tol=tol)
+        #generate_collins(onnx_path, degrees, max_polys_per_layer=Inf, tol=tol)
+        
+        generate_collins_sampling(onnx_path, degrees, widen_factor=2.)
     end
 end
 
