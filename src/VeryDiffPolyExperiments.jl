@@ -26,7 +26,6 @@ end
 include("set_hdf5_lib.jl")
 
 include("utils.jl")
-include("verydiff_patch/patch.jl")
 include("verydiff_legacy/verydiff_legacy.jl")
 include("fhe_export/json_export.jl")
 

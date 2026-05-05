@@ -79,9 +79,9 @@ function generate_collins(onnx_path, degrees; max_polys_per_layer=Inf, method=:a
 end
 
 
-function generate_collins_sampling(onnx_path, degrees; widen_factor=2., max_polys_per_layer=Inf,)
+function generate_collins_sampling(onnx_path, degrees; widen_factor=2., selection=:contiguous, tol=1e-9, max_polys_per_layer=Inf,)
     generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse, max_polys_per_layer=max_polys_per_layer, 
-                      method=:sampling, widen_factor=widen_factor, logfile_infix="sampling")
+                      method=:sampling, widen_factor=widen_factor, selection=selection, tol=tol, logfile_infix="sampling")
 end
 
 
@@ -100,7 +100,8 @@ function run_collins_experiment(;degrees=20:20:160, n_threads=Threads.nthreads()
         #generate_collins(onnx_path, degrees, max_polys_per_layer=1, tol=tol)
         #generate_collins(onnx_path, degrees, max_polys_per_layer=Inf, tol=tol)
         
-        generate_collins_sampling(onnx_path, degrees, widen_factor=2.)
+        generate_collins_sampling(onnx_path, degrees, widen_factor=2., tol=tol, selection=:dp, max_polys_per_layer=1)
+        generate_collins_sampling(onnx_path, degrees, widen_factor=2., tol=tol, selection=:dp)
     end
 end
 
