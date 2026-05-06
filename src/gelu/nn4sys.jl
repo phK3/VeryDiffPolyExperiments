@@ -80,10 +80,11 @@ end
 
 
 function generate_nn4sys_large_scale(;degree=27)
-    # TODO: ReLU networks !!!
     onnx_paths = [
-        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_5e-7l1.onnx")
-        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_deep_5e-7l1.onnx")
+        #joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_5e-7l1.onnx")
+        #joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_deep_5e-7l1.onnx")
+        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_5e-7l1.onnx")
+        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_deep_5e-7l1.onnx")
     ]
     for onnx_path in onnx_paths
         generate_nn4sys(onnx_path, [degree], max_polys_per_layer=Inf)
@@ -95,6 +96,8 @@ function sample_nn4sys_output_ranges()
     onnx_paths = [
         joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_5e-7l1.onnx")
         joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_gelu_deep_5e-7l1.onnx")
+        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_5e-7l1.onnx")
+        joinpath(@__DIR__, "..", "..", "networks", "nn4sys", "lindex_deep_5e-7l1.onnx")
     ]
 
     for onnx_path in onnx_paths
