@@ -84,13 +84,14 @@ class InternalMaxLoss(LossStrategy):
     
     Note: This loss does not directly optimize for model disagreement, but is based on the hypothesis that maximizing internal activations may lead to divergence in model predictions due to the polynomial activation ranges.
     """
-    def __init__(self, model_module_id: str, target_model: str = "test_model", hook_mode: str = "input"):
+    def __init__(self, model_module_id: str, target_model: str = "test_model", hook_mode: str = "input", attack_point=torch.zeros(1)):
         self.model_module_id = model_module_id
         assert target_model in ["test_model", "reference_model"], "target_model must be either 'test_model' or 'reference_model'"
         assert hook_mode in ["input", "output"], "hook_mode must be either 'input' or 'output'"
         self.hook_mode = hook_mode
         self.target_model = target_model
         self.feature_capture = {"features": None}
+        self.attack_point = attack_point
 
     def identify_successful_attacks(self, X):
         with torch.no_grad():
@@ -125,15 +126,21 @@ class InternalMaxLoss(LossStrategy):
     def set_models(self, reference_model, test_model):
         self.reference_model = reference_model
         self.test_model = test_model
-        self.reference_model.train()
-        self.test_model.train()
+        # Keep eval mode: train() would use batch statistics in BatchNorm and
+        # overwrite the models' running statistics.
+        self.reference_model.eval()
+        self.test_model.eval()
+        # Remove previously registered hook to avoid accumulating hooks
+        old_handle = getattr(self, "_hook_handle", None)
+        if old_handle is not None:
+            old_handle.remove()
         # Hook model
         target_model = self.test_model if self.target_model == "test_model" else self.reference_model
         target_module = self._resolve_module(target_model, self.model_module_id, self.target_model)
         if self.hook_mode == "input":
-            target_module.register_forward_hook(self._input_hook)
+            self._hook_handle = target_module.register_forward_hook(self._input_hook)
         else:
-            target_module.register_forward_hook(self._output_hook)
+            self._hook_handle = target_module.register_forward_hook(self._output_hook)
     
     def compute_loss(self, X):
         self.feature_capture["features"] = None  # Clear previous capture
@@ -142,24 +149,27 @@ class InternalMaxLoss(LossStrategy):
         feat_val = self.feature_capture["features"]
         if feat_val is None:
             raise ValueError("Feature capture is empty. Ensure that the hook is properly registered and the forward pass is executed before computing loss.")
-        loss = -feat_val.abs().mean()  # Maximize mean absolute activation
+        loss = -(feat_val-self.attack_point).abs().mean()  # Maximize mean absolute activation
+        print(loss)
         return loss
 
 
 class Adversary:
 
-    def __init__(self, attacks_iter: int = 100, attack_restarts: int = 20, attack_epsilon: float = 2.0/255.0):
+    def __init__(self, attacks_iter: int = 100, attack_restarts: int = 20, attack_epsilon: float = 2.0/255.0, low=0.0, high=1.0):
         self.attacks_iter = attacks_iter
         self.attack_restarts = attack_restarts
         self.attack_epsilon = attack_epsilon
         self.loss_strategy = ClassChangeLoss()
+        self.low = low
+        self.high = high
 
     def generate(self, reference_model, test_model, img_tensor):
 
         attack = self.pgd_attack(reference_model, test_model, img_tensor)
 
         adv = self.compute_perturbed_input(img_tensor, attack)
-        adv = torch.clamp(adv, 0, 1)  # Ensure the adversarial example is within valid range
+        adv = torch.clamp(adv, self.low, self.high)  # Ensure the adversarial example is within valid range
 
         orig_class = torch.argmax(reference_model(adv), dim=1)
 
@@ -171,7 +181,7 @@ class Adversary:
         epsilon = self.attack_epsilon
         delta = torch.zeros_like(X).uniform_(-epsilon, epsilon)
         # Delta should be in the range [0-X, 1-X] to ensure that X+delta is in the range [0,1]
-        delta.data = torch.clamp(delta, 0-X, 1-X)
+        delta.data = torch.clamp(delta, self.low - X, self.high - X)
         return delta
     
     def compute_perturbed_input(self, X, delta):
@@ -181,7 +191,7 @@ class Adversary:
         epsilon = self.attack_epsilon
         attack_alpha = 2.5 * epsilon / self.attacks_iter
         d_a = torch.clamp(delta - attack_alpha * torch.sign(grad), -epsilon, epsilon)
-        d_a = torch.clamp(d_a, 0-X, 1-X)
+        d_a = torch.clamp(d_a, self.low - X, self.high - X)
         return d_a
 
     def pgd_attack(self, reference_model, test_model, X):
@@ -279,10 +289,10 @@ class AffineAdversary(Adversary):
     """
 
     def __init__(self, attacks_iter: int = 100, attack_restarts: int = 20,
-                 epsilon_rot: float = 0.1, epsilon_tx: float = 0.05, epsilon_ty: float = 0.05):
+                 epsilon_rot: float = 0.1, epsilon_tx: float = 0.05, epsilon_ty: float = 0.05, **kwargs):
         # Store individual bounds; use epsilon_rot as the generic attack_epsilon (unused directly)
         super().__init__(attacks_iter=attacks_iter, attack_restarts=attack_restarts,
-                         attack_epsilon=epsilon_rot)
+                         attack_epsilon=epsilon_rot, **kwargs)
         self.epsilon_rot = epsilon_rot
         self.epsilon_tx = epsilon_tx
         self.epsilon_ty = epsilon_ty
@@ -336,10 +346,10 @@ class NoisyAffineAdversary(Adversary):
 
     def __init__(self, attacks_iter: int = 100, attack_restarts: int = 20,
                  epsilon_rot: float = 0.1, epsilon_tx: float = 0.05, epsilon_ty: float = 0.05,
-                 epsilon_noise: float = 0.01, noise_shape=(1, 28, 28), rotation_scale: bool = False):
+                 epsilon_noise: float = 0.01, noise_shape=(1, 28, 28), rotation_scale: bool = False, **kwargs):
         # Store individual bounds; use epsilon_rot as the generic attack_epsilon (unused directly)
         super().__init__(attacks_iter=attacks_iter, attack_restarts=attack_restarts,
-                         attack_epsilon=epsilon_rot)
+                         attack_epsilon=epsilon_rot, **kwargs)
         self.epsilon_rot = epsilon_rot
         self.epsilon_tx = epsilon_tx
         self.epsilon_ty = epsilon_ty
@@ -391,7 +401,7 @@ class NoisyAffineAdversary(Adversary):
         res = F.grid_sample(X, grid, align_corners=False)
         noise = delta[:, 3:].view(delta.size(0), *self.noise_shape)  # Reshape to the specified noise shape
         res = res + noise.expand_as(res)  # Add noise to each pixel
-        return torch.clamp(res, 0, 1)  # Ensure valid pixel range
+        return torch.clamp(res, self.low, self.high)  # Ensure valid pixel range
 
     def update_delta(self, X, delta, grad):
         lo, hi = self._bounds(delta.device, X)
@@ -419,9 +429,9 @@ class HELOCAdversary(Adversary):
     def __init__(self, feature_names: list[str], feature_config: dict,
                  frozen_features: set[str],
                  attacks_iter: int = 100, attack_restarts: int = 20,
-                 epsilon_frac: float = 0.1, range_spec = "minmax", min_one_eps=True):
+                 epsilon_frac: float = 0.1, range_spec = "minmax", min_one_eps=True, **kwargs):
         super().__init__(attacks_iter=attacks_iter, attack_restarts=attack_restarts,
-                         attack_epsilon=epsilon_frac)
+                         attack_epsilon=epsilon_frac, **kwargs)
         self.epsilon_frac = epsilon_frac
         self.feature_names = feature_names
 
@@ -493,8 +503,8 @@ class VAEAdversary(Adversary):
     Input images are encoded into a latent space by a pretrained VAE encoder.
     The adversary optimizes perturbations in the latent space, which are then decoded back into pixel space by the VAE decoder.
     """
-    def __init__(self, encoder, decoder, attacks_iter: int = 100, attack_restarts: int = 20, attack_epsilon: float = 0.1):
-        super().__init__(attacks_iter=attacks_iter, attack_restarts=attack_restarts, attack_epsilon=attack_epsilon)
+    def __init__(self, encoder, decoder, attacks_iter: int = 100, attack_restarts: int = 20, attack_epsilon: float = 0.1, **kwargs):
+        super().__init__(attacks_iter=attacks_iter, attack_restarts=attack_restarts, attack_epsilon=attack_epsilon, **kwargs)
         self.encoder = encoder.eval()  # Pretrained VAE encoder
         self.decoder = decoder.train()  # Pretrained VAE decoder (needed for gradients)
     
@@ -531,18 +541,16 @@ class PureNoiseAdversary(Adversary):
 
     def compute_perturbed_input(self, X, delta):
         # Ignore input X, return delta as the adversarial example
-        return torch.clamp(delta, 0, 1)  # Ensure valid pixel range
+        return torch.clamp(delta, self.low, self.high)  # Ensure valid pixel range
     
     def update_delta(self, X, delta, grad):
         epsilon = self.attack_epsilon
         attack_alpha = 2.5 * epsilon / self.attacks_iter
         d_a = torch.clamp(delta - attack_alpha * torch.sign(grad), -epsilon, epsilon)
-        return torch.clamp(d_a, 0, 1)  # Ensure valid pixel range
+        return torch.clamp(d_a, self.low, self.high)  # Ensure valid pixel range
     
 
-def robust_eval(reference_model, test_model, loader, criterion, device, adv):
-    reference_model.eval()
-    test_model.eval()
+def robust_eval(reference_model, test_model, loader, criterion, device, adv, limit=None):
     normal_loss_ref, normal_loss_test, adv_loss_ref, adv_loss_test = 0.0, 0.0, 0.0, 0.0
     normal_acc_ref, normal_acc_test, adv_acc_ref, adv_acc_test = 0, 0, 0, 0
     normal_eq, adv_eq = 0, 0
@@ -551,7 +559,13 @@ def robust_eval(reference_model, test_model, loader, criterion, device, adv):
     adv_examples = []
 
     for test_input, test_label in loader:
+        reference_model.eval()
+        test_model.eval()
         test_input, test_label = test_input.to(device), test_label.to(device)
+
+        if total is not None and total >= limit:
+            break
+        print(f"\r Evaluated {total} samples. Found {adv_nans_test} adversarial examples with NaNs in test model output.", end="", flush=True)
 
         total += test_input.size(0)
 
