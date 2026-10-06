@@ -150,7 +150,6 @@ class InternalMaxLoss(LossStrategy):
         if feat_val is None:
             raise ValueError("Feature capture is empty. Ensure that the hook is properly registered and the forward pass is executed before computing loss.")
         loss = -(feat_val-self.attack_point).abs().mean()  # Maximize mean absolute activation
-        print(loss)
         return loss
 
 
