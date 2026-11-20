@@ -112,6 +112,31 @@ function generate_mnist_large_scale(;degree=119)
 end
 
 
+"""
+    run_mnist_l1_ablation(; degrees=[119], kwargs...)
+
+Compare ReLU and GeLU 256×4 checkpoints at L1 strengths 0, 2e-5, and 1e-4.
+Uses `load_mnist_data()` with the same default dataset as the existing experiments.
+Keywords such as `n_threads`, `max_polys_per_layer`, and `tol` are forwarded to
+`run_l1_ablation`. Results are saved under `results/gelu/mnist/l1_ablation`.
+"""
+function run_mnist_l1_ablation(; degrees=[119],
+                              output_dir=joinpath(@__DIR__, "..", "..", "results", "gelu", "mnist", "l1_ablation"),
+                              kwargs...)
+    root = joinpath(@__DIR__, "..", "..", "networks", "mnist")
+    cases = [
+        (family="relu_256x4", l1=0.0, path=joinpath(root, "mnist-net_256x4.onnx")),
+        (family="relu_256x4", l1=2e-5, path=joinpath(root, "mnist_256x4_2e5.onnx")),
+        (family="relu_256x4", l1=1e-4, path=joinpath(root, "mnist_256x4_1e4.onnx")),
+        (family="gelu_256x4", l1=0.0, path=joinpath(root, "mnist_gelu_256x4.onnx")),
+        (family="gelu_256x4", l1=2e-5, path=joinpath(root, "mnist_gelu_256x4_2e5.onnx")),
+        (family="gelu_256x4", l1=1e-4, path=joinpath(root, "mnist_gelu_256x4_1e4.onnx")),
+    ]
+    return run_l1_ablation(cases, degrees, load_mnist_data, get_input_bounds_mnist, mnist_acc_fun;
+                           metric_name="accuracy", output_dir=output_dir, kwargs...)
+end
+
+
 function sample_mnist_output_ranges()
     onnx_paths = [
         joinpath(@__DIR__, "..", "..", "networks", "mnist", "mnist_256x4_1e4.onnx"),

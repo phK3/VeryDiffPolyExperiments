@@ -74,8 +74,8 @@ function generate_collins_single(onnx_path, degree)
 end
 
 
-function generate_collins(onnx_path, degrees; max_polys_per_layer=Inf, method=:acrown, tol=1e-9)
-    generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse, max_polys_per_layer=max_polys_per_layer, method=method, tol=tol)
+function generate_collins(onnx_path, degrees; max_polys_per_layer=Inf, method=:acrown, tol=1e-9, tight_gelu=true)
+    generate_networks(onnx_path, degrees, load_collins_data, get_input_bounds_collins, collins_mse, max_polys_per_layer=max_polys_per_layer, method=method, tol=tol, tight_gelu=tight_gelu)
 end
 
 

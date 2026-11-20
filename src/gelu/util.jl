@@ -44,14 +44,23 @@ kwargs:
 - `max_polys_per_layer`: maximum number of polynomials per layer (default: `Inf`)
 - `method`: approximation method to use, either `:acrown`, `:zono` or `:sampling` (default: `:acrown`)
 - `widen_factor`: if approximation by sampling, width of bounds will be widened by this factor (default: 2)
+- `metric_name`: descriptive name of the task metric (default: `"metric"`)
+- `metadata`: additional experiment metadata saved with the results
+- `output_dir`: directory for the timestamped JLD2 logfile (default: current directory)
+
+Returns the saved result dictionary. Existing result fields are retained; `degree_results`
+additionally records sampled output ranges and deviations for each completed degree.
 
 """
 function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metric; max_polys_per_layer=Inf, method=:acrown, 
-                           widen_factor=2, tol=1e-10, selection=:contiguous, logfile_infix="")
+                           widen_factor=2, tol=1e-10, selection=:contiguous, tight_gelu=true, logfile_infix="",
+                           metric_name="metric", metadata=Dict{String,Any}(), output_dir=".")
     println("Generating polynomial networks for ", onnx_path)
     println("Using ", min(Threads.nthreads(), VeryDiff.APPROX_POLY_THREADS[]), " threads for approximation")
     
     logfile = length(logfile_infix) > 0 ? string(basename(onnx_path)[1:end-5], "_", logfile_infix, "_results_", now(), ".jld2") : string(basename(onnx_path)[1:end-5], "_results_", now(), ".jld2")
+    mkpath(output_dir)
+    logfile = joinpath(output_dir, logfile)
     println("Logging results to ", logfile)
 
     X_test, y_test = load_data()
@@ -71,6 +80,7 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
     t_verifies = []
     t_evals = []
     networks = []
+    degree_results = []
     # stores by reference, so if ϵs is modified, result_dict is also updated when saved
     result_dict = Dict(
             "degrees" => degrees,
@@ -84,13 +94,27 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
             "threads" => Threads.nthreads(),
             "approx_poly_threads" => VeryDiff.APPROX_POLY_THREADS[],
             "max_polys_per_layer" => max_polys_per_layer,
-            "method" => method
+            "method" => method,
+            "onnx_path" => abspath(onnx_path),
+            "logfile" => abspath(logfile),
+            "input_bounds" => input_bounds,
+            "n_samples" => length(X_test),
+            "metric_name" => metric_name,
+            "metadata" => metadata,
+            "original_metric" => mse,
+            "original_output_range" => (minimum(ŷ), maximum(ŷ)),
+            "t_original_eval" => t_eval,
+            "degree_results" => degree_results,
+            "tol" => tol,
+            "selection" => selection,
+            "tight_gelu" => tight_gelu,
+            "widen_factor" => widen_factor
         )
     for d in degrees
         println("Approximating with degree ", d, "...")
         if method == :acrown
             t_approx = @elapsed model_poly = VeryDiff.approximate_polynomial_abcrown(onnx_path, d, input_bounds=input_bounds, 
-                                                                                    max_polys_per_layer=max_polys_per_layer, verbosity=1, selection=selection, tol=tol)
+                                                                                    max_polys_per_layer=max_polys_per_layer, verbosity=1, selection=selection, tol=tol, tight_gelu=tight_gelu)
             model_poly_dense = VNNLib.net2dense(model_poly, Dict(k => rand(v...) for (k, v) in model_poly.input_shapes))
         elseif method == :zono
             t_approx = @elapsed model_poly_dense = approximate_polynomial_iterative_zono(model_dense, vec(input_bounds["input"][1]), vec(input_bounds["input"][2]), d,
@@ -123,6 +147,20 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
         push!(t_verifies, t_verify)
         push!(t_evals, t_eval)
 
+        Δ = ŷ_poly .- ŷ
+        push!(degree_results, (
+            degree=d,
+            poly_metric=mse_poly,
+            poly_output_range=(minimum(ŷ_poly), maximum(ŷ_poly)),
+            sampled_max_deviation=ϵ_sample,
+            sampled_deviation_mse=sum(abs2, Δ) / length(Δ),
+            sampled_deviation_mae=sum(abs, Δ) / length(Δ),
+            verified_deviation=method == :sampling ? missing : ϵ,
+            t_approx=t_approx,
+            t_eval=t_eval,
+            t_verify=t_verify,
+        ))
+
         if (method == :acrown) || (method == :sampling)
             push!(networks, model_poly)
         elseif method == :zono
@@ -134,6 +172,46 @@ function generate_networks(onnx_path, degrees, load_data, get_input_bounds, metr
 
         println("Degree: ", d, " ϵ: ", ϵ, ", ϵ_sample: ", ϵ_sample, ", acc/mse (poly): ", mse_poly, ", t_approx: ", t_approx, " t_verify: ", t_verify, " t_eval: ", t_eval)
     end
+    return result_dict
+end
+
+
+"""
+    run_l1_ablation(cases, degrees, load_data, get_input_bounds, metric; metric_name, output_dir, kwargs...)
+
+Run verified polynomial approximation for cases with `path`, `family`, and `l1` fields.
+Load the evaluation data and construct the input box once for the entire sweep.
+Additional keywords are passed to `generate_networks`; approximation uses `:acrown`.
+Returns one result dictionary per checkpoint, each also saved to a timestamped JLD2 file.
+"""
+function run_l1_ablation(cases, degrees, load_data, get_input_bounds, metric;
+                         metric_name, output_dir, n_threads=Threads.nthreads(), kwargs...)
+    1 <= n_threads <= Threads.nthreads() ||
+        throw(ArgumentError("n_threads must be between 1 and $(Threads.nthreads())"))
+    cases = collect(cases)
+    degrees = collect(degrees)
+    isempty(cases) && throw(ArgumentError("No networks selected"))
+    isempty(degrees) && throw(ArgumentError("No degrees selected"))
+    for case in cases
+        isfile(case.path) || error("Missing network: $(case.path)")
+    end
+
+    VeryDiff.APPROX_POLY_THREADS[] = n_threads
+    if n_threads > 1
+        BLAS.set_num_threads(1)
+    end
+
+    X, y = load_data()
+    input_bounds = get_input_bounds(X)
+    results = []
+    for case in cases
+        result = generate_networks(case.path, degrees, () -> (X, y), _ -> input_bounds, metric;
+            method=:acrown, metric_name=metric_name,
+            metadata=Dict("study" => "l1_ablation", "family" => case.family, "l1" => case.l1),
+            output_dir=output_dir, logfile_infix="l1_ablation", kwargs...)
+        push!(results, result)
+    end
+    return results
 end
 
 
@@ -146,6 +224,7 @@ function sample_output_ranges(onnx_path, load_data, metric)
     ŷ, mse, t_eval = evaluate_network(model, X_test, y_test, metric)
 
     println("\toutput in [", minimum(ŷ), ", ", maximum(ŷ), "]")
+    return minimum(ŷ), maximum(ŷ)
 end
 
 
