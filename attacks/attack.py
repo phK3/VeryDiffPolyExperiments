@@ -557,12 +557,15 @@ def robust_eval(reference_model, test_model, loader, criterion, device, adv, lim
     total = 0
     adv_examples = []
 
+    if total is None:
+        total = float('inf')
+
     for test_input, test_label in loader:
         reference_model.eval()
         test_model.eval()
         test_input, test_label = test_input.to(device), test_label.to(device)
 
-        if total is not None and total >= limit:
+        if total >= limit:
             break
         print(f"\r Evaluated {total} samples. Found {adv_nans_test} adversarial examples with NaNs in test model output.", end="", flush=True)
 
