@@ -201,7 +201,9 @@ function run_l1_ablation(cases, degrees, load_data, get_input_bounds, metric;
         BLAS.set_num_threads(1)
     end
 
+    println("Loading evaluation data for L1 ablation (may download the dataset on first use)...")
     X, y = load_data()
+    println("Loaded ", length(X), " samples; constructing input bounds...")
     input_bounds = get_input_bounds(X)
     results = []
     for case in cases

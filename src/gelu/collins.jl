@@ -120,6 +120,44 @@ function generate_collins_large_scale(;degree=119)
 end
 
 
+"""
+    run_collins_l1_ablation(; degrees=[119], tol=1e-9, kwargs...)
+
+Compare small window-20 ReLU checkpoints at L1 strengths 0 and 1e-3, and
+GeLU checkpoints at 0, 2e-5, and 1e-3. Uses the existing Collins evaluation
+data and sensor-wise input bounds. The 1e-3 checkpoints use the same
+`_kernel_size` exports as the existing experiments.
+
+The raw ONNX graphs have matching convolution weight shapes and five activation
+layers of the advertised type. The baseline ReLU and 0/2e-5 GeLU checkpoints
+use `_julia` inference copies produced by `training/prepare_collins_onnx.py`;
+the original files are preserved. All checkpoints are preflight-loaded before
+starting the sweep so export compatibility errors fail before approximation.
+
+Keywords such as `n_threads` and `max_polys_per_layer` are forwarded to
+`run_l1_ablation`. Results are saved under `results/gelu/collins/l1_ablation`.
+"""
+function run_collins_l1_ablation(; degrees=[119], tol=1e-9,
+                                output_dir=joinpath(@__DIR__, "..", "..", "results", "gelu", "collins", "l1_ablation"),
+                                kwargs...)
+    root = joinpath(@__DIR__, "..", "..", "networks", "collins")
+    cases = [
+        (family="relu_small_window20", l1=0.0, path=joinpath(root, "NN_rul_small_window_20_julia.onnx")),
+        (family="relu_small_window20", l1=1e-3, path=joinpath(root, "NN_rul_small_window_20_1e-3l1_kernel_size.onnx")),
+        (family="gelu_small_window20", l1=0.0, path=joinpath(root, "NN_rul_small_window_20_gelu_julia.onnx")),
+        (family="gelu_small_window20", l1=2e-5, path=joinpath(root, "NN_rul_small_window_20_gelu_2e-5l1_julia.onnx")),
+        (family="gelu_small_window20", l1=1e-3, path=joinpath(root, "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx")),
+    ]
+    for case in cases
+        isfile(case.path) || error("Missing network: $(case.path)")
+        println("Checking Collins checkpoint: ", basename(case.path))
+        load_onnx_model(case.path)
+    end
+    return run_l1_ablation(cases, degrees, load_collins_data, get_input_bounds_collins, collins_mse;
+                           metric_name="mse", output_dir=output_dir, tol=tol, kwargs...)
+end
+
+
 function sample_collins_output_ranges()
     onnx_paths = [
         joinpath(@__DIR__, "..", "..", "networks", "collins", "NN_rul_small_window_20_gelu_1e-3l1_kernel_size.onnx"),

@@ -96,6 +96,38 @@ function generate_cifar_large_scale(;degrees=[119, 247])
 end
 
 
+"""
+    run_cifar_l1_ablation(; degrees=[119], kwargs...)
+
+Compare width-4 GeLU checkpoints at L1 strengths 0, 2e-5, and 1e-4, and
+width-4 ReLU checkpoints at 0, 2e-5, 1e-4, and 5e-4. Uses the CIFAR-10 test
+set and the ReLU `_new` checkpoint at 1e-4, as in the existing experiments.
+Keywords such as `n_threads`, `max_polys_per_layer`, and `tol` are forwarded to
+`run_l1_ablation`. Results are saved under `results/gelu/cifar/l1_ablation`.
+
+Known naming issue (raw ONNX graphs checked): the `models_relu` width-4
+checkpoints at 2e-5 and 5e-4 actually contain GeLU, not ReLU. The non-`_new`
+1e-4 checkpoint also contains GeLU; only the baseline and `1e-4_new` in this
+sweep contain ReLU. Do not interpret this selection as a clean ReLU L1 sweep.
+"""
+function run_cifar_l1_ablation(; degrees=[119],
+                              output_dir=joinpath(@__DIR__, "..", "..", "results", "gelu", "cifar", "l1_ablation"),
+                              kwargs...)
+    root = joinpath(@__DIR__, "..", "..", "networks", "cifar")
+    cases = [
+        (family="gelu_width4", l1=0.0, path=joinpath(root, "best_model_bn_4.onnx")),
+        (family="gelu_width4", l1=2e-5, path=joinpath(root, "best_model_bn_4_2e-05l1.onnx")),
+        (family="gelu_width4", l1=1e-4, path=joinpath(root, "best_model_bn_4_0.0001l1.onnx")),
+        (family="relu_width4", l1=0.0, path=joinpath(root, "models_relu", "best_model_relu_bn_4.onnx")),
+        (family="relu_width4", l1=2e-5, path=joinpath(root, "models_relu", "best_model_relu_bn_4_2e-05l1.onnx")),
+        (family="relu_width4", l1=1e-4, path=joinpath(root, "models_relu", "best_model_relu_bn_4_0.0001l1_new.onnx")),
+        (family="relu_width4", l1=5e-4, path=joinpath(root, "models_relu", "best_model_relu_bn_4_0.0005l1.onnx")),
+    ]
+    return run_l1_ablation(cases, degrees, load_cifar_data, get_input_bounds_cifar, cifar_acc;
+                           metric_name="accuracy", output_dir=output_dir, kwargs...)
+end
+
+
 function sample_cifar_output_ranges()
     onnx_paths = [
         joinpath(@__DIR__, "..", "..", "networks", "cifar", "best_model_bn_4_0.0001l1.onnx"),
