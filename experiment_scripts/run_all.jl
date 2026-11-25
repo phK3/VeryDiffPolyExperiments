@@ -16,7 +16,7 @@ VeryDiffPolyExperiments.warmup()
 # VeryDiffPolyExperiments.generate_cer_large_scale(degree=27)
 # VeryDiffPolyExperiments.generate_mnist_large_scale(degree=119)
 
-# VeryDiffPolyExperiments.run_mnist_l1_ablation(degrees=(20:20:100) ∪  [119])
+VeryDiffPolyExperiments.run_mnist_l1_ablation(degrees=(20:20:100) ∪  [119])
 # VeryDiffPolyExperiments.run_cifar_l1_ablation(degrees=(20:20:100) ∪ [119, 247])
 # Julia-compatible Collins copies can be prepared with training/prepare_collins_onnx.py.
-VeryDiffPolyExperiments.run_collins_l1_ablation(degrees=(20:20:100) ∪ [119, 247])
+# VeryDiffPolyExperiments.run_collins_l1_ablation(degrees=(20:20:100) ∪ [119, 247])
